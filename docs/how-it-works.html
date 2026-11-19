@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How Akshar Drishti Works</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Noto+Sans+Devanagari:wght@400;600&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* Layout idea: a long technical walk-through with a sticky contents rail; colours borrowed from the app's own annotation code (blue text, violet stamp, red signature, green table). */
+  --paper:#fbfbf8; --ink:#1d2433; --muted:#5b6475; --rule:#dfe2e8; --panel:#f1f3f7;
+  --accent:#2f5bd3; --stamp:#7c3aed; --sig:#dc2626; --table:#15803d; --title:#c2410c;
+  --ours:#e8eefc; --used:#f3efe6; --code:#eef0f5;
+  --display:"Source Serif 4", Georgia, serif;
+  --body:"IBM Plex Sans", "Noto Sans Devanagari", system-ui, sans-serif;
+  --mono:"IBM Plex Mono", ui-monospace, Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#11151d; --ink:#e6e9f0; --muted:#a3abbb; --rule:#2a3140; --panel:#181d28;
+    --accent:#7f9cf5; --stamp:#a78bfa; --sig:#f87171; --table:#4ade80; --title:#fb923c;
+    --ours:#1c2640; --used:#2a2619; --code:#1a1f2b; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#11151d; --ink:#e6e9f0; --muted:#a3abbb; --rule:#2a3140; --panel:#181d28;
+  --accent:#7f9cf5; --stamp:#a78bfa; --sig:#f87171; --table:#4ade80; --title:#fb923c;
+  --ours:#1c2640; --used:#2a2619; --code:#1a1f2b; color-scheme: dark;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--body);font-size:16.5px;line-height:1.62}
+a{color:var(--accent)}
+a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{display:grid;grid-template-columns:240px minmax(0,1fr);gap:48px;max-width:1240px;margin:0 auto;padding:32px 24px 80px}
+nav.toc{position:sticky;top:20px;align-self:start;max-height:calc(100vh - 40px);overflow:auto;font-size:14px;border-right:1px solid var(--rule);padding-right:16px}
+nav.toc p{font-weight:600;margin:0 0 8px;color:var(--muted);font-size:12px;letter-spacing:.06em;text-transform:uppercase}
+nav.toc ol{margin:0;padding-left:20px;display:grid;gap:6px}
+nav.toc a{color:var(--ink);text-decoration:none}
+nav.toc a:hover{color:var(--accent);text-decoration:underline}
+main{min-width:0}
+header.top h1{font-family:var(--display);font-size:clamp(30px,4vw,44px);line-height:1.1;margin:0 0 12px;text-wrap:balance}
+header.top .lede{font-size:19px;color:var(--muted);max-width:68ch;margin:0}
+section{padding-top:36px;margin-top:28px;border-top:1px solid var(--rule)}
+h2{font-family:var(--display);font-size:29px;line-height:1.2;margin:0 0 12px;text-wrap:balance}
+h3{font-size:19px;margin:28px 0 8px;text-wrap:balance}
+h4{font-size:16px;margin:20px 0 6px}
+p,li{max-width:72ch}
+code,pre,kbd{font-family:var(--mono);font-size:.88em}
+code{background:var(--code);padding:1px 5px;border-radius:4px}
+pre{background:var(--code);padding:14px 16px;border-radius:8px;overflow-x:auto;line-height:1.5;max-width:100%}
+pre code{background:none;padding:0}
+.dev{font-family:"Noto Sans Devanagari",var(--body)}
+figure{margin:20px 0 24px}
+figure .scroll{overflow-x:auto;background:var(--panel);border:1px solid var(--rule);border-radius:10px;padding:14px}
+figure svg{display:block;width:100%;height:auto;min-width:720px;color:var(--ink)}
+figure.small svg{min-width:520px}
+figcaption{font-size:14px;color:var(--muted);margin-top:8px;max-width:80ch}
+.tablewrap{overflow-x:auto;margin:14px 0 22px}
+table{border-collapse:collapse;width:100%;font-size:14.5px}
+th,td{border-bottom:1px solid var(--rule);padding:8px 10px;text-align:left;vertical-align:top}
+th{background:var(--panel);font-weight:600}
+td code{white-space:nowrap}
+.num{font-variant-numeric:tabular-nums}
+.step{display:grid;grid-template-columns:52px minmax(0,1fr);gap:16px;margin:26px 0}
+.step .n{width:44px;height:44px;border-radius:50%;background:var(--accent);color:var(--paper);display:grid;place-items:center;font-weight:600;font-size:17px}
+.step h3{margin-top:6px}
+.io{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:10px 0 12px}
+.io div{background:var(--panel);border:1px solid var(--rule);border-radius:8px;padding:10px 12px;font-size:14.5px}
+.io b{display:block;font-size:12px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.where{font-size:14px;color:var(--muted)}
+.simple{border-left:3px solid var(--accent);padding:6px 0 6px 14px;margin:12px 0;color:var(--ink);background:none}
+.simple b{color:var(--accent)}
+.tag{display:inline-block;font-size:12px;font-weight:600;padding:1px 8px;border-radius:999px;border:1px solid var(--rule);margin-right:4px}
+.tag.ours{background:var(--ours)}
+.tag.used{background:var(--used)}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:14px;color:var(--muted);margin:8px 0 0}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{width:14px;height:14px;border-radius:3px;display:inline-block;border:1px solid var(--muted)}
+.tree{font-family:var(--mono);font-size:13.5px;line-height:1.55}
+.callout{background:var(--panel);border:1px solid var(--rule);border-radius:10px;padding:14px 16px;margin:16px 0}
+.callout p{margin:6px 0}
+@media (max-width:900px){
+  .wrap{grid-template-columns:1fr;gap:20px}
+  nav.toc{position:static;max-height:none;border-right:none;border-bottom:1px solid var(--rule);padding:0 0 16px}
+  .io{grid-template-columns:1fr}
+}
+@media (max-width:420px){ body{font-size:15.5px} .step{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav class="toc" aria-label="Contents">
+  <p>Contents</p>
+  <ol>
+    <li><a href="#big-picture">The big picture</a></li>
+    <li><a href="#files">Every file and folder</a></li>
+    <li><a href="#notebook">The notebook, cell by cell</a></li>
+    <li><a href="#journey">One page, step by step</a></li>
+    <li><a href="#inside-ocr">Inside IndicOCR</a></li>
+    <li><a href="#marks">Signatures and stamps</a></li>
+    <li><a href="#fields">Key fields</a></li>
+    <li><a href="#masking">Privacy masking</a></li>
+    <li><a href="#outputs">Verdict, picture, files</a></li>
+    <li><a href="#archive">Archive and search</a></li>
+    <li><a href="#app">The web app</a></li>
+    <li><a href="#data">What the data looks like</a></li>
+    <li><a href="#evaluation">How we tested it</a></li>
+    <li><a href="#speed">Where the time goes</a></li>
+    <li><a href="#failures">What can go wrong where</a></li>
+    <li><a href="#glossary">Glossary</a></li>
+  </ol>
+</nav>
+
+<main>
+<header class="top">
+  <h1>How Akshar Drishti works, from upload to archive</h1>
+  <p class="lede">A complete walk-through of the project in plain language: what happens to a page image at every step, which file and which function does each job, what each step hands to the next, and how all the files fit together.</p>
+</header>
+
+<!-- ============================================================ -->
+<section id="big-picture">
+<h2>1. The big picture</h2>
+<p>A clerk opens a web page, uploads a photo or scan of a government document, and clicks <b>Process</b>. About 6.7 seconds later (on a T4 GPU) the page shows: whether the document is signed and stamped, the full text in reading order, a table of key values such as dates and survey numbers, the Aadhaar and PAN numbers hidden, cropped pictures of each stamp and signature, and five downloadable files. The document is also saved in a searchable archive.</p>
+<p>Behind that one click, the image passes through 13 steps. Two of them use models someone else trained (IndicOCR for reading, a YOLOv8 model for signatures). Everything else is code written for this project.</p>
+
+<figure>
+<div class="scroll">
+<svg viewBox="0 0 1060 700" role="img" aria-label="The page image flows through 13 steps in three rows: upload, normalise, layout, reading; then marks, merge, fields, masking; then verdict, annotated picture, exports, archive; and finally the web app shows everything.">
+  <defs>
+    <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker>
+  </defs>
+  <g font-family="IBM Plex Sans, sans-serif" font-size="13" fill="currentColor">
+    <!-- Row A -->
+    <text x="20" y="22" font-size="12" opacity=".7">ROW 1 · READ THE PAGE</text>
+    <rect x="20" y="34" width="220" height="96" rx="10" fill="none" stroke="currentColor"/>
+    <text x="36" y="60" font-weight="600">1  Upload</text>
+    <text x="36" y="82">Browser sends the image</text>
+    <text x="36" y="100">to Gradio (gr.Image)</text>
+    <text x="36" y="118" opacity=".7">notebook cell A5</text>
+
+    <rect x="280" y="34" width="220" height="96" rx="10" fill="#2f5bd3" fill-opacity=".14" stroke="#2f5bd3"/>
+    <text x="296" y="60" font-weight="600">2  Normalise</text>
+    <text x="296" y="82">RGB, longest side ≤ 2000 px</text>
+    <text x="296" y="100">saved as name_input.png</text>
+    <text x="296" y="118" opacity=".7">process_document, A4</text>
+
+    <rect x="540" y="34" width="220" height="96" rx="10" fill="#b08d57" fill-opacity=".16" stroke="#b08d57" stroke-dasharray="5 4"/>
+    <text x="556" y="60" font-weight="600">3  Find regions</text>
+    <text x="556" y="82">IndicDocLayout (33M)</text>
+    <text x="556" y="100">boxes, 37 labels, order</text>
+    <text x="556" y="118" opacity=".7">indic-ocr/ package</text>
+
+    <rect x="800" y="34" width="240" height="96" rx="10" fill="#b08d57" fill-opacity=".16" stroke="#b08d57" stroke-dasharray="5 4"/>
+    <text x="816" y="60" font-weight="600">4  Read each region</text>
+    <text x="816" y="82">IndicBlockOCR (0.8B)</text>
+    <text x="816" y="100">text, tables as HTML</text>
+    <text x="816" y="118" opacity=".7">indic-ocr/ package</text>
+
+    <line x1="240" y1="82" x2="276" y2="82" stroke="currentColor" stroke-width="1.6" marker-end="url(#ah)"/>
+    <text x="243" y="74" font-size="11">path</text>
+    <line x1="500" y1="82" x2="536" y2="82" stroke="currentColor" stroke-width="1.6" marker-end="url(#ah)"/>
+    <text x="503" y="74" font-size="11">PNG</text>
+    <line x1="760" y1="82" x2="796" y2="82" stroke="currentColor" stroke-width="1.6" marker-end="url(#ah)"/>
+    <text x="762" y="74" font-size="11">boxes</text>
+
+    <!-- down A->B -->
+    <line x1="920" y1="130" x2="920" y2="206" stroke="currentColor" stroke-width="1.6" marker-end="url(#ah)"/>
+    <text x="928" y="172" font-size="11">page dict: blocks + text + markdown</text>
+
+    <!-- Row B (right to left) -->
+    <text x="20" y="196" font-size="12" opacity=".7">ROW 2 · CHECK, EXTRACT, PROTECT</text>
+    <rect x="800" y="210" width="240" height="110" rx="10" fill="#2f5bd3" fill-opacity=".14" stroke="#2f5bd3"/>
+    <text x="816" y="236" font-weight="600">5  Find marks</text>
+    <text x="816" y="258" fill="#dc2626">YOLOv8s → signatures</text>
+    <text x="816" y="276" fill="#7c3aed">HSV colour → stamps</text>
+    <text x="816" y="296" opacity=".7">detect_marks, cell S2</text>
+    <text x="816" y="312" opacity=".7" font-size="11">(YOLO weights are pretrained)</text>
+
+    <rect x="540" y="210" width="220" height="110" rx="10" fill="#2f5bd3" fill-opacity=".14" stroke="#2f5bd3"/>
+    <text x="556" y="236" font-weight="600">6  Merge</text>
+    <text x="556" y="258">drop stamp &gt;60% in signature</text>
+    <text x="556" y="276">tag text &gt;50% in a mark</text>
+    <text x="556" y="294">save a crop of each mark</text>
+    <text x="556" y="312" opacity=".7">add_marks, cell S2</text>
+
+    <rect x="280" y="210" width="220" height="110" rx="10" fill="#2f5bd3" fill-opacity=".14" stroke="#2f5bd3"/>
+    <text x="296" y="236" font-weight="600">7  Key fields</text>
+    <text x="296" y="258">join text in reading order</text>
+    <text x="296" y="276">० – ९ → 0 – 9</text>
+    <text x="296" y="294">8 regex patterns</text>
+    <text x="296" y="312" opacity=".7">extract_fields, cell A2</text>
+
+    <rect x="20" y="210" width="220" height="110" rx="10" fill="#2f5bd3" fill-opacity=".14" stroke="#2f5bd3"/>
+    <text x="36" y="236" font-weight="600">8  Masking</text>
+    <text x="36" y="258">Aadhaar / PAN → XXXX…</text>
+    <text x="36" y="276">in text, fields, crops</text>
+    <text x="36" y="294">black boxes on the image</text>
+    <text x="36" y="312" opacity=".7">mask_text, cell A2</text>
+
+    <line x1="800" y1="265" x2="764" y2="265" stroke="currentColor" stroke-width="1.6" marker-end="url(#ah)"/>
+    <text x="766" y="257" font-size="11">marks</text>
+    <line x1="540" y1="265" x2="504" y2="265" stroke="currentColor" stroke-width="1.6" marker-end="url(#ah)"/>
+    <text x="506" y="257" font-size="11">page</text>
+    <line x1="280" y1="265" x2="244" y2="265" stroke="currentColor" stroke-width="1.6" marker-end="url(#ah)"/>
+    <text x="246" y="257" font-size="11">fields</text>
+
+    <!-- down B->C -->
+    <line x1="130" y1="320" x2="130" y2="396" stroke="currentColor" stroke-width="1.6" marker-end="url(#ah)"/>
+    <text x="138" y="362" font-size="11">masked page + fields + black boxes</text>
+
+    <!-- Row C -->
+    <text x="20" y="386" font-size="12" opacity=".7">ROW 3 · REPORT AND STORE</text>
+    <rect x="20" y="400" width="220" height="96" rx="10" fill="#2f5bd3" fill-opacity=".14" stroke="#2f5bd3"/>
+    <text x="36" y="426" font-weight="600">9  Verdict</text>
+    <text x="36" y="448">signed? stamped?</text>
+    <text x="36" y="466">COMPLETE / INCOMPLETE</text>
+    <text x="36" y="484" opacity=".7">process_document, A4</text>
+
+    <rect x="280" y="400" width="220" height="96" rx="10" fill="#2f5bd3" fill-opacity=".14" stroke="#2f5bd3"/>
+    <text x="296" y="426" font-weight="600">10  Annotated picture</text>
+    <text x="296" y="448">coloured boxes drawn</text>
+    <text x="296" y="466">name_annotated.png</text>
+    <text x="296" y="484" opacity=".7">PIL ImageDraw, A4</text>
+
+    <rect x="540" y="400" width="220" height="96" rx="10" fill="#2f5bd3" fill-opacity=".14" stroke="#2f5bd3"/>
+    <text x="556" y="426" font-weight="600">11  Export files</text>
+    <text x="556" y="448">JSON, Markdown,</text>
+    <text x="556" y="466">Excel, HTML report</text>
+    <text x="556" y="484" opacity=".7">pandas, report_html, A4</text>
+
+    <rect x="800" y="400" width="240" height="96" rx="10" fill="#2f5bd3" fill-opacity=".14" stroke="#2f5bd3"/>
+    <text x="816" y="426" font-weight="600">12  Archive</text>
+    <text x="816" y="448">INSERT into SQLite docs</text>
+    <text x="816" y="466">text stored masked + NFC</text>
+    <text x="816" y="484" opacity=".7">archive_add, cell A3</text>
+
+    <line x1="240" y1="448" x2="276" y2="448" stroke="currentColor" stroke-width="1.6" marker-end="url(#ah)"/>
+    <line x1="500" y1="448" x2="536" y2="448" stroke="currentColor" stroke-width="1.6" marker-end="url(#ah)"/>
+    <line x1="760" y1="448" x2="796" y2="448" stroke="currentColor" stroke-width="1.6" marker-end="url(#ah)"/>
+
+    <!-- Row D: app -->
+    <rect x="20" y="560" width="1020" height="110" rx="10" fill="none" stroke="currentColor"/>
+    <text x="36" y="588" font-weight="600">13  The web app shows the result (Gradio, cell A5)</text>
+    <text x="36" y="612">Verification box · annotated page · tabs: Extracted text, Key fields, Stamps &amp; signatures (gallery of crops), Downloads (5 files)</text>
+    <text x="36" y="634">Second tab, Search archive: type any word or number → archive_search → matching documents with a snippet and ✔/✘ for signed and stamped</text>
+    <text x="36" y="656" opacity=".7">process_document returns 6 things in this order: verdict, annotated image, markdown, fields table, crop list, file list</text>
+
+    <line x1="530" y1="496" x2="530" y2="556" stroke="currentColor" stroke-width="1.6" marker-end="url(#ah)"/>
+    <text x="538" y="532" font-size="11">6 return values</text>
+    <line x1="920" y1="556" x2="920" y2="500" stroke="currentColor" stroke-width="1.6" stroke-dasharray="4 4" marker-end="url(#ah)"/>
+    <text x="928" y="532" font-size="11">search query</text>
+  </g>
+</svg>
+</div>
+<div class="legend"><span><i class="sw" style="background:rgba(47,91,211,.14);border-color:#2f5bd3"></i>Code written for this project</span><span><i class="sw" style="background:rgba(176,141,87,.16);border:1px dashed #b08d57"></i>Pretrained model used as-is (IndicOCR)</span></div>
+<figcaption>The whole pipeline. Row 1 reads the page, row 2 checks and protects it, row 3 reports and stores it, and the app shows the result. Every box names the function and notebook cell that does the work.</figcaption>
+</figure>
+
+<div class="simple"><b>In one sentence:</b> the image is read (IndicOCR), checked (YOLO + colour), mined for values (regex), cleaned of ID numbers (masking), summarised (verdict), drawn on (annotated picture), saved as files and in a database, and shown in tabs.</div>
+</section>
+
+<!-- ============================================================ -->
+<section id="files">
+<h2>2. Every file and folder, and what it does</h2>
+<p>The project folder holds three kinds of things: the notebooks you run, the IndicOCR engine they load, and the documents (report, paper, slides). The app itself lives entirely inside one notebook, <code>indic_ocr_colab.ipynb</code>.</p>
+
+<figure>
+<div class="scroll">
+<pre class="tree" aria-label="Project folder tree">indicocr/
+├── indic_ocr_colab.ipynb            ← THE APP: setup, OCR demo, marks, fields, masking, archive, web app
+├── akshardrishti_synthetic_eval.ipynb ← builds the 30-page benchmark (G1) and scores the app on it (E3)
+├── akshardrishti_speed_benchmark.ipynb← times the parser with different settings (P1–P4): found fp16
+├── real_dataset/pages/real_001.jpg  ← the real Marathi government order used in the live demo
+├── indic-ocr/                       ← the IndicOCR engine (downloaded from Hugging Face; not our code)
+│   ├── indic_ocr.py                 ← front door: IndicOCR.from_pretrained(repo), parser.parse(image)
+│   ├── idp_offline.py               ← runs the two stages: IndicDocLayout.detect, IndicBlockOCR.run
+│   ├── idp_layout.py                ← layout backend: calls the model, converts boxes to pixels
+│   ├── idp_model_infer.py           ← resizes page to 1024×1024, runs the detector, decodes order
+│   ├── idp_model_ppdoc.py           ← the RT-DETR (PP-DocLayoutV3) model class
+│   ├── idp_model_labels.py          ← the 37 layout labels
+│   ├── idp_model_order_loss.py      ← reading-order decoding (and its training loss)
+│   ├── idp_blocks.py                ← box maths: remove duplicates, nested equations, header/footer rules
+│   ├── idp_crops.py                 ← cut each block out of the page, pad it, clamp its area
+│   ├── idp_contract.py              ← prompts, label→type map, which labels are skipped
+│   ├── idp_recognizer.py            ← builds crop+prompt requests; HfRecognizer generates the text
+│   ├── idp_reconstruct.py           ← joins block texts into Markdown; repairs hyphens and maths
+│   ├── idp_types.py                 ← data classes (Block, PageResult) and all settings (configs)
+│   ├── weights/layout/  weights/ocr/← the trained model files (~1.8 GB total)
+│   ├── schemas/*.json               ← the exact shape of layout and parse outputs
+│   ├── config.json                  ← says "two-stage: layout then ocr" and where weights are
+│   ├── requirements.txt, install.sh ← libraries the engine needs
+│   └── README.md, ARCHITECTURE.md, TROUBLESHOOTING.md
+├── Final_Year_Project_Report_Template/AksharDrishti_Final_Report/ ← the 7-chapter report (LaTeX)
+├── paper/akshardrishti/             ← the research paper (LaTeX)
+└── AksharDrishti_Viva_Guide.md      ← viva notes</pre>
+</div>
+<figcaption>Project folder map. Arrows on the right say what each file is for.</figcaption>
+</figure>
+
+<h3>How the files connect</h3>
+<p>The notebook is the only thing you run. In cell 3 it downloads the <code>indic-ocr</code> folder from Hugging Face (<code>snapshot_download("bodhan-ai/indic-ocr")</code>). In cell 4 it adds that folder to Python's search path and imports <code>IndicOCR</code> from <code>indic_ocr.py</code>. From then on, one call, <code>parser.parse(path)</code>, runs all the engine files in the order shown in <a href="#inside-ocr">section 5</a>. Everything after OCR (marks, fields, masking, verdict, exports, archive, app) is plain Python inside the notebook cells S1, S2 and A1–A5.</p>
+
+<div class="tablewrap"><table>
+<thead><tr><th>Who wrote it</th><th>Parts</th><th>Where</th></tr></thead>
+<tbody>
+<tr><td><span class="tag used">Used as-is</span></td><td>IndicOCR engine and its two models; YOLOv8s signature weights (Tech4Humans); libraries (PyTorch, Transformers, Ultralytics, OpenCV, pandas, Gradio, SQLite)</td><td><code>indic-ocr/</code>, Hugging Face, pip</td></tr>
+<tr><td><span class="tag ours">This project</span></td><td>Normalising, colour stamp detector, merge rule, crops, field extraction, masking (text and image), verdict, annotated picture, exports, archive and search, web app, benchmark generator, scoring, speed study</td><td><code>indic_ocr_colab.ipynb</code> and the two evaluation notebooks</td></tr>
+</tbody></table></div>
+</section>
+
+<!-- ============================================================ -->
+<section id="notebook">
+<h2>3. The notebook, cell by cell</h2>
+<p>Cells run top to bottom. Each one creates something (a variable or a function) that later cells use. If you skip a cell, a later one fails because the thing it needs does not exist yet.</p>
+<div class="tablewrap"><table>
+<thead><tr><th>Cell</th><th>What it does</th><th>What it leaves for later cells</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>Runs <code>nvidia-smi</code> to confirm a GPU (Tesla T4) is attached.</td><td>nothing; a check</td></tr>
+<tr><td>2</td><td>Installs all libraries once: transformers ≥ 5.7, accelerate, huggingface_hub, pillow &lt; 13 (Gradio needs this), ultralytics, gradio, openpyxl, lxml. Then you restart the session.</td><td>installed libraries</td></tr>
+<tr><td>3</td><td>Logs in to Hugging Face with the <code>HF_TOKEN</code> secret and downloads the engine and weights (about 1.8 GB) to <code>/content/indic-ocr</code>.</td><td><code>repo</code> (the folder path)</td></tr>
+<tr><td>4</td><td>Adds <code>repo</code> to the Python path, imports IndicOCR and builds the parser.</td><td><code>parser</code></td></tr>
+<tr><td>5–8</td><td>Plain OCR demo: upload images, parse, print Markdown, draw numbered layout boxes, zip results.</td><td><code>pages</code> (optional)</td></tr>
+<tr><td>B1–B3</td><td>Optional: score IndicOCR on an external benchmark with CER/WER.</td><td>scores (optional)</td></tr>
+<tr><td>S1</td><td>Downloads the YOLOv8s signature model and loads it. Sets <code>STAMP_WEIGHTS = None</code>, so stamps use the colour method.</td><td><code>sig_model</code>, <code>stamp_model</code> (None)</td></tr>
+<tr><td>S2</td><td>Defines the box and mark functions.</td><td><code>covered</code>, <code>yolo_boxes</code>, <code>colour_stamps</code>, <code>detect_marks</code>, <code>add_marks</code></td></tr>
+<tr><td>A1</td><td>Checks Gradio and Pillow versions.</td><td>nothing; a check</td></tr>
+<tr><td>A2</td><td>Defines field extraction and masking.</td><td><code>DEV_DIGITS</code>, <code>clean</code>, <code>to_plain</code>, <code>FIELD_PATTERNS</code>, <code>find_spans</code>, <code>extract_fields</code>, <code>mask_value</code>, <code>mask_text</code>, <code>sensitive_boxes</code></td></tr>
+<tr><td>A3</td><td>Opens or creates <code>/content/archive.db</code> with table <code>docs</code>.</td><td><code>con</code>, <code>nfc</code>, <code>archive_add</code>, <code>archive_search</code></td></tr>
+<tr><td>A4</td><td>Defines the full pipeline and the HTML report.</td><td><code>process_document</code>, <code>report_html</code>, <code>MAX_SIDE = 2000</code>, colour tables</td></tr>
+<tr><td>A5</td><td>Builds the Gradio interface, connects buttons to functions, launches with a public link (or the Colab proxy link).</td><td>the running app, <code>demo</code></td></tr>
+</tbody></table></div>
+<p>The fp16 speed-up is one extra line run after cell 4 and before the first page: <code>parser._rec_cfg = parser._rec_cfg.merged(dtype="float16")</code>. It must run before the text reader loads, because the reader reads this setting only once.</p>
+</section>
+
+<!-- ============================================================ -->
+<section id="journey">
+<h2>4. One page, step by step</h2>
+<p>Follow one real example: the Marathi government order <code>real_001.jpg</code> with a table, a violet round seal and the officer's signature. Each step lists what goes in, what comes out, and where the code is.</p>
+
+<div class="step"><div class="n">1</div><div>
+<h3>Upload</h3>
+<div class="io"><div><b>In</b>A photo or scan on the clerk's computer or phone</div><div><b>Out</b>A file path on the server, plus the checkbox value <code>mask = True</code></div><div><b>Code</b><code>gr.Image(type="filepath")</code>, <code>gr.Checkbox</code>, cell A5</div></div>
+<p>The browser sends the image to the Gradio server running inside Colab. Gradio saves it as a temporary file and gives our function its path, a text string like <code>/tmp/gradio/…/real_001.jpg</code>. The "Mask Aadhaar / PAN numbers" box is ticked by default. Clicking <b>Process</b> calls <code>process_document(path, mask)</code>.</p>
+<p>If no image was uploaded, the function stops with the message "Upload a page image first." instead of crashing.</p>
+</div></div>
+
+<div class="step"><div class="n">2</div><div>
+<h3>Normalise the image</h3>
+<div class="io"><div><b>In</b>Any JPG/PNG, any size, any colour mode</div><div><b>Out</b><code>app_output/real_001/real_001_input.png</code>, RGB, longest side ≤ 2000 px</div><div><b>Code</b><code>process_document</code> part 0, cell A4</div></div>
+<p>A folder <code>/content/app_output/&lt;name&gt;/</code> is made for this document. The image is opened with Pillow and converted to RGB (three colour channels). If its longest side is more than 2000 pixels, <code>thumbnail((2000, 2000))</code> shrinks it while keeping the shape. The result is saved as a PNG, and from here on every step uses this copy.</p>
+<div class="simple"><b>Why:</b> phone photos can be 4000 px and crashed Colab's memory. The layout model looks at the page at 1024 × 1024 anyway, so 2000 px keeps plenty of detail. Test case TC04 shrinks a 2976 × 4209 page to 2000 px; TC05 leaves a 1240 × 1754 page unchanged.</div>
+</div></div>
+
+<div class="step"><div class="n">3</div><div>
+<h3>Find the regions and their order (IndicDocLayout)</h3>
+<div class="io"><div><b>In</b>The normalised PNG</div><div><b>Out</b>A list of blocks: box, label, type, confidence, reading order (text still empty)</div><div><b>Code</b><code>parser.parse</code> → <code>IndicDocLayout.detect</code>, files <code>idp_offline.py</code>, <code>idp_layout.py</code>, <code>idp_model_infer.py</code>, <code>idp_blocks.py</code></div></div>
+<p>The page is resized to a square of 1024 × 1024 and turned into numbers between 0 and 1. The RT-DETR model (33 million parameters) looks at the whole page and makes a fixed set of guesses. Each guess has a box, a score for each of 37 labels, and a score for how it ranks against the others in reading order. Guesses with a score above the threshold are kept, and their order is decoded into a sequence.</p>
+<p>The boxes come out on a 0–1000 scale as [y0, x0, y1, x1]. The code converts them to pixels on your image as [x0, y0, x1, y1] and clamps them inside the page. Then <code>clean_layout</code> removes duplicate boxes (one box at least 90% inside a similar one), keeps only the largest header and the largest footer, and drops empty header/footer frames. Finally the order is renumbered 0, 1, 2, … with no gaps.</p>
+<div class="simple"><b>In simple words:</b> before reading anything, the system draws a rectangle around every paragraph, title and table and numbers them in the order a person would read them.</div>
+</div></div>
+
+<div class="step"><div class="n">4</div><div>
+<h3>Read each region (IndicBlockOCR)</h3>
+<div class="io"><div><b>In</b>The page and its list of blocks</div><div><b>Out</b>Every block now has text; the page also has a Markdown version</div><div><b>Code</b><code>IndicBlockOCR.run</code>, files <code>idp_contract.py</code>, <code>idp_crops.py</code>, <code>idp_recognizer.py</code>, <code>idp_reconstruct.py</code></div></div>
+<ol>
+<li><b>Skip some blocks.</b> Labels header, footer, diagram, image, chart and advertisement are not read. They stay in the list with empty text.</li>
+<li><b>Drop nested equations.</b> An equation box at least 70% inside another block would be read twice, so it is removed.</li>
+<li><b>Crop.</b> Each remaining block is cut out of the page with a few pixels of padding so letter edges are not clipped.</li>
+<li><b>Clamp the size.</b> Each crop is scaled so its pixel area falls between a minimum and a maximum, keeping its shape. Tiny crops grow so letters are readable; huge or very long crops shrink so they don't turn into tens of thousands of image tokens.</li>
+<li><b>Choose the instruction.</b> Tables get a "write this as an HTML table" prompt, equations a LaTeX prompt, everything else a plain transcription prompt.</li>
+<li><b>Generate the text.</b> The crop and its prompt are put into the model's chat format. Several crops go to the GPU together. The 0.8B model writes the text one token at a time, always taking the most likely token (greedy), up to 2048 tokens, and stops at the tokenizer's end token.</li>
+<li><b>Put it back.</b> Texts come back in the same order as the requests, so each text is attached to its block by position.</li>
+<li><b>Build Markdown.</b> Block texts are joined in reading order. Words broken by a hyphen at a line end are rejoined, and Indian-script text inside maths is wrapped so it stays valid LaTeX.</li>
+</ol>
+<p>Back in our notebook, every block text and the Markdown pass through <code>clean()</code>, which replaces the tokenizer's leftover space marker <code>▁</code> with a normal space.</p>
+<div class="simple"><b>Why it takes the longest:</b> the model writes one token at a time, so more text means more time. This step is about 5.7 s of the 6.7 s average, and about 25 s on a dense page like <code>real_001.jpg</code>.</div>
+</div></div>
+
+<div class="step"><div class="n">5</div><div>
+<h3>Find signatures and stamps</h3>
+<div class="io"><div><b>In</b>The normalised PNG</div><div><b>Out</b>A list of marks: type, box, confidence, method</div><div><b>Code</b><code>detect_marks</code> → <code>yolo_boxes</code>, <code>colour_stamps</code>, cell S2</div></div>
+<p><b>Signatures:</b> the YOLOv8s model looks at the page at 1024 px and returns boxes with a confidence. Boxes at 0.4 or above are kept as <code>{"type": "signature", "method": "yolo"}</code>.</p>
+<p><b>Stamps:</b> the colour method (details in <a href="#marks">section 6</a>) finds large, roughly round or square blobs of strong colour. Each becomes <code>{"type": "stamp", "conf": null, "method": "colour"}</code>. If <code>STAMP_WEIGHTS</code> pointed to a trained stamp model, YOLO would be used here instead.</p>
+</div></div>
+
+<div class="step"><div class="n">6</div><div>
+<h3>Merge marks with the text</h3>
+<div class="io"><div><b>In</b>Blocks from step 4, marks from step 5</div><div><b>Out</b><code>page["marks"]</code>, crop images, <code>inside_mark</code> tags on blocks</div><div><b>Code</b><code>detect_marks</code> and <code>add_marks</code>, cell S2</div></div>
+<ul>
+<li><b>Rule a:</b> a stamp blob more than 60% inside a signature box is thrown away. It is a blue-ink signature, not a stamp.</li>
+<li><b>Rule c:</b> every mark is cropped from the page and saved as <code>crops/&lt;name&gt;_&lt;type&gt;_&lt;i&gt;.png</code>.</li>
+<li><b>Rule b:</b> any text block more than 50% inside a mark gets <code>"inside_mark": "stamp"</code> (or signature). This flags seal text read as a garbage paragraph. The text is kept, never deleted.</li>
+</ul>
+<p>"More than 60% inside" is measured with <code>covered(a, b)</code>: the area of the overlap divided by the area of box a.</p>
+</div></div>
+
+<div class="step"><div class="n">7</div><div>
+<h3>Extract key fields</h3>
+<div class="io"><div><b>In</b>Block texts in reading order</div><div><b>Out</b>A list of [field, value] pairs</div><div><b>Code</b><code>to_plain</code>, <code>extract_fields</code>, cell A2</div></div>
+<p>All block texts are turned into plain text (tables become one line per row) and joined with new lines in reading order. Devanagari digits are swapped for Latin digits, 8 patterns are run, and duplicates are removed. Details in <a href="#fields">section 7</a>.</p>
+</div></div>
+
+<div class="step"><div class="n">8</div><div>
+<h3>Mask identity numbers</h3>
+<div class="io"><div><b>In</b>Fields, block texts, Markdown, full text, crops</div><div><b>Out</b>The same, with Aadhaar and PAN hidden; a list of black rectangles for the picture</div><div><b>Code</b><code>sensitive_boxes</code>, <code>mask_value</code>, <code>mask_text</code>, cells A2 and A4</div></div>
+<p>Only if the checkbox is ticked. The black rectangles are worked out first, from the unmasked text. Then the fields, every block's text, the Markdown and the full text are masked, and the black rectangles are also painted on each mark crop, in case a number sits next to a signature. Details in <a href="#masking">section 8</a>.</p>
+</div></div>
+
+<div class="step"><div class="n">9</div><div>
+<h3>Decide the verdict</h3>
+<div class="io"><div><b>In</b>The list of marks</div><div><b>Out</b>A three-line text and <code>page["verification"]</code></div><div><b>Code</b><code>process_document</code> part 5, cell A4</div></div>
+<pre><code>Signature: ✔ found (1)
+Stamp/seal: ✔ found (1)
+Status: COMPLETE - signed and stamped</code></pre>
+<p>If either list is empty, the status becomes "INCOMPLETE - check manually". The JSON gets <code>{"signed": true, "stamped": true}</code>.</p>
+</div></div>
+
+<div class="step"><div class="n">10</div><div>
+<h3>Draw the annotated picture</h3>
+<div class="io"><div><b>In</b>The normalised PNG, blocks, marks, black rectangles</div><div><b>Out</b><code>&lt;name&gt;_annotated.png</code></div><div><b>Code</b>Pillow <code>ImageDraw</code>, cell A4</div></div>
+<p>Thin boxes for text blocks (<span style="color:var(--accent)">blue</span>; <span style="color:var(--table)">green</span> for tables; <span style="color:var(--title)">orange</span> for titles and section headings), thick boxes with a label for <span style="color:var(--sig)">signatures (red)</span> and <span style="color:var(--stamp)">stamps (violet)</span>, and solid black rectangles over masked numbers.</p>
+</div></div>
+
+<div class="step"><div class="n">11</div><div>
+<h3>Write the export files</h3>
+<div class="io"><div><b>In</b>The page record, fields, verdict, picture</div><div><b>Out</b>4 files next to the picture</div><div><b>Code</b><code>json.dump</code>, pandas <code>ExcelWriter</code>, <code>report_html</code>, cell A4</div></div>
+<p>See <a href="#outputs">section 9</a> for what is inside each file.</p>
+</div></div>
+
+<div class="step"><div class="n">12</div><div>
+<h3>Save to the archive</h3>
+<div class="io"><div><b>In</b>Name, signed, stamped, fields, full text (masked)</div><div><b>Out</b>One new row in table <code>docs</code></div><div><b>Code</b><code>archive_add</code>, cell A3</div></div>
+<p>The text is normalised to Unicode NFC before it is stored, so it can be searched reliably later. See <a href="#archive">section 10</a>.</p>
+</div></div>
+
+<div class="step"><div class="n">13</div><div>
+<h3>Tidy up and show the result</h3>
+<div class="io"><div><b>In</b>Everything above</div><div><b>Out</b>6 return values to Gradio</div><div><b>Code</b>end of <code>process_document</code></div></div>
+<p>The time of each part is stored in <code>LAST_TIMING</code> (parser, marks, rest). Large images are deleted, Python's garbage collector runs and <code>torch.cuda.empty_cache()</code> frees unused GPU memory, so a long session does not run out. The function returns: verdict text, annotated picture path, Markdown, fields table, list of crop paths and list of file paths. Gradio puts each into its box or tab.</p>
+</div></div>
+</section>
+
+<!-- ============================================================ -->
+<section id="inside-ocr">
+<h2>5. Inside IndicOCR: which file runs when</h2>
+<p>This is what happens inside the single call <code>parser.parse(path)</code>. Two stages, with a list of blocks passed between them.</p>
+<figure>
+<div class="scroll">
+<svg viewBox="0 0 1000 560" role="img" aria-label="Inside IndicOCR: stage one, layout, runs through idp_offline, idp_layout, idp_model_infer and idp_blocks and produces a block list; stage two, recognition, runs through idp_contract, idp_blocks, idp_crops, idp_recognizer and idp_reconstruct and produces text and markdown.">
+  <defs><marker id="ah2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+  <g font-family="IBM Plex Sans, sans-serif" font-size="13" fill="currentColor">
+    <rect x="360" y="10" width="280" height="44" rx="8" fill="none" stroke="currentColor"/>
+    <text x="500" y="37" text-anchor="middle" font-weight="600">indic_ocr.py · IndicOCR.parse(image)</text>
+
+    <text x="30" y="88" font-weight="600" font-size="14">STAGE 1 · LAYOUT (weights/layout)</text>
+    <text x="530" y="88" font-weight="600" font-size="14">STAGE 2 · RECOGNITION (weights/ocr)</text>
+
+    <g>
+      <rect x="30" y="100" width="420" height="58" rx="8" fill="#b08d57" fill-opacity=".14" stroke="#b08d57"/>
+      <text x="44" y="124" font-weight="600">idp_offline.py · IndicDocLayout.detect</text>
+      <text x="44" y="144">open image as RGB, call the layout backend</text>
+      <rect x="30" y="176" width="420" height="58" rx="8" fill="#b08d57" fill-opacity=".14" stroke="#b08d57"/>
+      <text x="44" y="200" font-weight="600">idp_model_infer.py · infer (+ idp_model_ppdoc, _labels)</text>
+      <text x="44" y="220">resize 1024×1024, RT-DETR → scores, labels, boxes</text>
+      <rect x="30" y="252" width="420" height="58" rx="8" fill="#b08d57" fill-opacity=".14" stroke="#b08d57"/>
+      <text x="44" y="276" font-weight="600">idp_model_order_loss.py · decode_order</text>
+      <text x="44" y="296">turn pairwise order scores into a sequence</text>
+      <rect x="30" y="328" width="420" height="58" rx="8" fill="#b08d57" fill-opacity=".14" stroke="#b08d57"/>
+      <text x="44" y="352" font-weight="600">idp_layout.py · convert + clamp_to_page</text>
+      <text x="44" y="372">0–1000 [y0,x0,y1,x1] → pixel [x0,y0,x1,y1]</text>
+      <rect x="30" y="404" width="420" height="58" rx="8" fill="#b08d57" fill-opacity=".14" stroke="#b08d57"/>
+      <text x="44" y="428" font-weight="600">idp_blocks.py · clean_layout, then densify order</text>
+      <text x="44" y="448">drop duplicates, one header/footer, order 0…n−1</text>
+      <line x1="240" y1="158" x2="240" y2="172" stroke="currentColor" stroke-width="1.5" marker-end="url(#ah2)"/>
+      <line x1="240" y1="234" x2="240" y2="248" stroke="currentColor" stroke-width="1.5" marker-end="url(#ah2)"/>
+      <line x1="240" y1="310" x2="240" y2="324" stroke="currentColor" stroke-width="1.5" marker-end="url(#ah2)"/>
+      <line x1="240" y1="386" x2="240" y2="400" stroke="currentColor" stroke-width="1.5" marker-end="url(#ah2)"/>
+    </g>
+    <g>
+      <rect x="530" y="100" width="440" height="58" rx="8" fill="#b08d57" fill-opacity=".14" stroke="#b08d57"/>
+      <text x="544" y="124" font-weight="600">idp_contract.py · is_transcribed</text>
+      <text x="544" y="144">skip header, footer, diagram, image, chart, advert</text>
+      <rect x="530" y="176" width="440" height="58" rx="8" fill="#b08d57" fill-opacity=".14" stroke="#b08d57"/>
+      <text x="544" y="200" font-weight="600">idp_blocks.py · resolve_nested_equations</text>
+      <text x="544" y="220">drop equation boxes ≥ 70% inside another block</text>
+      <rect x="530" y="252" width="440" height="58" rx="8" fill="#b08d57" fill-opacity=".14" stroke="#b08d57"/>
+      <text x="544" y="276" font-weight="600">idp_crops.py · crop_for, area_clamp  +  prompt_for</text>
+      <text x="544" y="296">cut + pad + resize each block; pick text/table/equation prompt</text>
+      <rect x="530" y="328" width="440" height="58" rx="8" fill="#b08d57" fill-opacity=".14" stroke="#b08d57"/>
+      <text x="544" y="352" font-weight="600">idp_recognizer.py · HfRecognizer.transcribe</text>
+      <text x="544" y="372">chat template, batches, greedy generate ≤ 2048 tokens</text>
+      <rect x="530" y="404" width="440" height="58" rx="8" fill="#b08d57" fill-opacity=".14" stroke="#b08d57"/>
+      <text x="544" y="428" font-weight="600">idp_offline.py match by order → idp_reconstruct.py</text>
+      <text x="544" y="448">text back onto blocks; join into Markdown</text>
+      <line x1="750" y1="158" x2="750" y2="172" stroke="currentColor" stroke-width="1.5" marker-end="url(#ah2)"/>
+      <line x1="750" y1="234" x2="750" y2="248" stroke="currentColor" stroke-width="1.5" marker-end="url(#ah2)"/>
+      <line x1="750" y1="310" x2="750" y2="324" stroke="currentColor" stroke-width="1.5" marker-end="url(#ah2)"/>
+      <line x1="750" y1="386" x2="750" y2="400" stroke="currentColor" stroke-width="1.5" marker-end="url(#ah2)"/>
+    </g>
+    <line x1="420" y1="54" x2="240" y2="96" stroke="currentColor" stroke-width="1.5" marker-end="url(#ah2)"/>
+    <path d="M450 433 C 490 433, 490 129, 526 129" fill="none" stroke="currentColor" stroke-width="1.5" marker-end="url(#ah2)"/>
+    <text x="462" y="290" font-size="11" transform="rotate(-90 470 290)">PageResult: blocks, text = None</text>
+    <line x1="750" y1="462" x2="750" y2="500" stroke="currentColor" stroke-width="1.5" marker-end="url(#ah2)"/>
+    <rect x="560" y="504" width="380" height="44" rx="8" fill="none" stroke="currentColor"/>
+    <text x="750" y="531" text-anchor="middle" font-weight="600">page dict: blocks with text + markdown → back to the notebook</text>
+    <text x="30" y="500" font-size="12" opacity=".75">Settings for both stages live in idp_types.py</text>
+    <text x="30" y="518" font-size="12" opacity=".75">(LayoutConfig, CropConfig, DedupConfig, RecognizerConfig: dtype, max_tokens, batch size)</text>
+  </g>
+</svg>
+</div>
+<figcaption>Stage 1 finds and orders the regions; stage 2 reads them. The block list (a PageResult) is the only thing passed between the stages, which is why the order numbers must have no gaps: texts are matched back to blocks by position.</figcaption>
+</figure>
+<div class="callout">
+<p><b>Why the text reader loads late:</b> the <code>parser.recognizer</code> property creates the 0.8B model only the first time it is needed (lazy loading). That is why the first page of a session is slow, and why the fp16 setting must be changed before that first page.</p>
+<p><b>Why we saw a footer problem:</b> stage 1 labelled the officer's designation line at the bottom as a <i>footer</i> on 26 of 30 benchmark pages, and stage 2 skips footers by design. Those characters were never read, which raised our CER.</p>
+</div>
+</section>
+
+<!-- ============================================================ -->
+<section id="marks">
+<h2>6. Signatures and stamps in detail</h2>
+<h3>Signatures: a trained detector</h3>
+<p>Cell S1 downloads <code>yolov8s.pt</code> from <code>tech4humans/yolov8s-signature-detector</code> and loads it with Ultralytics. In S2, <code>yolo_boxes(model, path, "signature", 0.4)</code> runs <code>model(path, conf=0.4, imgsz=1024)</code> and turns each detected box into a dictionary with its rounded coordinates and confidence. Signatures are thin pen strokes, so the page is given to YOLO at 1024 px rather than the usual 640 px to keep the strokes visible.</p>
+
+<h3>Stamps: a colour rule, no training</h3>
+<figure class="small">
+<div class="scroll">
+<svg viewBox="0 0 1000 200" role="img" aria-label="Stamp detection in five steps: convert to HSV, keep saturated pixels, close gaps with a 25 by 25 square, find connected blobs, keep blobs that are large enough and roughly square, then drop any that are mostly inside a signature.">
+  <defs><marker id="ah3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+  <g font-family="IBM Plex Sans, sans-serif" font-size="12.5" fill="currentColor">
+    <rect x="10" y="30" width="170" height="130" rx="8" fill="none" stroke="currentColor"/>
+    <text x="22" y="54" font-weight="600">1 BGR → HSV</text>
+    <text x="22" y="76">cv2.cvtColor</text>
+    <text x="22" y="96">hue = which colour</text>
+    <text x="22" y="114">sat = how strong</text>
+    <text x="22" y="132">val = how bright</text>
+    <rect x="210" y="30" width="170" height="130" rx="8" fill="none" stroke="#7c3aed"/>
+    <text x="222" y="54" font-weight="600">2 Colour mask</text>
+    <text x="222" y="76">cv2.inRange</text>
+    <text x="222" y="96">(0,70,50)→(180,255,255)</text>
+    <text x="222" y="114">any hue, S ≥ 70, V ≥ 50</text>
+    <text x="222" y="132">black text drops out</text>
+    <rect x="410" y="30" width="170" height="130" rx="8" fill="none" stroke="#7c3aed"/>
+    <text x="422" y="54" font-weight="600">3 Close gaps</text>
+    <text x="422" y="76">MORPH_CLOSE</text>
+    <text x="422" y="96">25 × 25 square</text>
+    <text x="422" y="114">ring + letters + emblem</text>
+    <text x="422" y="132">become one blob</text>
+    <rect x="610" y="30" width="170" height="130" rx="8" fill="none" stroke="#7c3aed"/>
+    <text x="622" y="54" font-weight="600">4 Blobs + filters</text>
+    <text x="622" y="76">connectedComponents</text>
+    <text x="622" y="96">area ≥ 0.2% of page</text>
+    <text x="622" y="114">0.4 &lt; width/height &lt; 2.5</text>
+    <text x="622" y="132">specks, lines rejected</text>
+    <rect x="810" y="30" width="180" height="130" rx="8" fill="none" stroke="#dc2626"/>
+    <text x="822" y="54" font-weight="600">5 Rule a</text>
+    <text x="822" y="76">covered(blob, sig) &gt; 0.6</text>
+    <text x="822" y="96">→ it is a blue-ink</text>
+    <text x="822" y="114">signature: drop it</text>
+    <text x="822" y="132">the rest are stamps</text>
+    <line x1="180" y1="95" x2="206" y2="95" stroke="currentColor" stroke-width="1.5" marker-end="url(#ah3)"/>
+    <line x1="380" y1="95" x2="406" y2="95" stroke="currentColor" stroke-width="1.5" marker-end="url(#ah3)"/>
+    <line x1="580" y1="95" x2="606" y2="95" stroke="currentColor" stroke-width="1.5" marker-end="url(#ah3)"/>
+    <line x1="780" y1="95" x2="806" y2="95" stroke="currentColor" stroke-width="1.5" marker-end="url(#ah3)"/>
+    <text x="10" y="186" font-size="12" opacity=".75">Result on the benchmark: coloured stamps found 13 of 18 (recall 0.72); black stamps 0 of 9, because black ink has no saturation and fails step 2.</text>
+  </g>
+</svg>
+</div>
+<figcaption>The colour stamp detector, function <code>colour_stamps</code> plus rule a in <code>detect_marks</code>. Every number here was fixed before the benchmark was made.</figcaption>
+</figure>
+<p><b>Why colour works:</b> office seals are pressed in blue, violet or red ink, while printed text is black. In HSV, "coloured" is one test on saturation. <b>Why it fails:</b> black stamps look exactly like text; faded stamps fall below S = 70; a stamp pressed over a blue signature can merge with it and be dropped by rule a; coloured logos can pass as stamps.</p>
+
+<h3>The containment test used by the merge</h3>
+<pre><code>def covered(a, b):
+    """Fraction of box a that lies inside box b."""
+    x0, y0 = max(a[0], b[0]), max(a[1], b[1])
+    x1, y1 = min(a[2], b[2]), min(a[3], b[3])
+    inter = max(0, x1 - x0) * max(0, y1 - y0)
+    area  = (a[2] - a[0]) * (a[3] - a[1])
+    return inter / area if area else 0.0</code></pre>
+<p>Example: a text block of 100 × 20 lying fully inside a 200 × 200 stamp has <code>covered = 1.0</code> but an IoU of only 0.05. That is why the merge uses containment ("is this small box part of that big one?") and the evaluation uses IoU ("do these two boxes match?").</p>
+</section>
+
+<!-- ============================================================ -->
+<section id="fields">
+<h2>7. Key-field extraction in detail</h2>
+<h3>Building the text</h3>
+<p><code>to_plain</code> cleans each block: <code>&lt;br&gt;</code> becomes a space, the end of a table cell becomes a space, the end of a table row becomes a new line, all other HTML tags are removed, entities like <code>&amp;amp;</code> are decoded and <code>$</code> signs from LaTeX are dropped. The blocks are joined with new lines in reading order into one string, <code>full</code>.</p>
+<h3>The digit swap</h3>
+<p><code>DEV_DIGITS = str.maketrans("<span class="dev">०१२३४५६७८९</span>", "0123456789")</code>. Each Devanagari digit becomes one Latin digit, so the text keeps the same length and every position still points to the same character. Masking relies on that.</p>
+<h3>The 8 patterns (exact, from cell A2)</h3>
+<div class="tablewrap"><table>
+<thead><tr><th>Field</th><th>Pattern in plain words</th><th>Matches</th></tr></thead>
+<tbody>
+<tr><td>Aadhaar</td><td>no digit before; first digit 2–9; then 3 + 4 + 4 digits with optional spaces; no digit after</td><td><code>2345 6789 0123</code></td></tr>
+<tr><td>PAN</td><td>5 capital letters, 4 digits, 1 capital letter; no letter or digit touching either side</td><td><code>ABCDE1234F</code></td></tr>
+<tr><td>Phone</td><td>optional +91; 10 digits starting 6–9, optionally 5 + 5</td><td><code>98765 43210</code></td></tr>
+<tr><td>PIN code</td><td>6 digits, first 1–9, optionally 3 + 3; no digit around it</td><td><code>400 032</code></td></tr>
+<tr><td>Date</td><td>1–2 digits, separator / . or -, 1–2 digits, separator, 4 or 2 digits</td><td><code>15.06.2021</code></td></tr>
+<tr><td>Amount</td><td>₹, Rs, Rs., <span class="dev">रु.</span> or <span class="dev">रुपये</span>, then a number with commas and up to 2 decimals</td><td><code>₹ 1,500</code></td></tr>
+<tr><td>Survey / Gat no.</td><td>survey, sy., gat, <span class="dev">गट</span>, <span class="dev">सर्वे</span> or <span class="dev">सर्व्हे</span>; optional no./number/<span class="dev">नं.</span>/<span class="dev">क्र.</span>/<span class="dev">क्रमांक</span>; then digits with optional /parts</td><td><code><span class="dev">गट नं.</span> 45/2</code></td></tr>
+<tr><td>Email</td><td>letters, digits, dots, +, - before @; a domain with a dot</td><td><code>name@gov.in</code></td></tr>
+</tbody></table></div>
+<p>The "no digit before or after" checks (look-behind <code>(?&lt;!\d)</code> and look-ahead <code>(?!\d)</code>) stop the PIN pattern from finding a 6-digit piece inside every 12-digit Aadhaar number.</p>
+<h3>Removing duplicates</h3>
+<p>Each value's spaces are tidied, and a set of (field, value) pairs remembers what was already added. A date written three times appears once.</p>
+<h3>Worked example (the notebook's own self-test)</h3>
+<pre><code><span class="dev">आधार क्र. २३४५ ६७८९ ०१२३</span>, PAN ABCDE1234F, mob 9876543210, dt 12/03/2024, <span class="dev">गट नं.</span> 45/2, ₹ 1,500
+→ Aadhaar 2345 6789 0123 · PAN ABCDE1234F · Phone 9876543210 · Date 12/03/2024
+  · Survey / Gat no. <span class="dev">गट नं.</span> 45/2 · Amount ₹ 1,500</code></pre>
+<p><b>Result on the benchmark:</b> 147 of 147 values, no wrong values. <b>Known gaps:</b> dates with a Marathi month name and landline numbers with an STD code (found on the real circular, test cases TC25 and TC23).</p>
+</section>
+
+<!-- ============================================================ -->
+<section id="masking">
+<h2>8. Privacy masking in detail</h2>
+<h3>In the text</h3>
+<p><code>find_spans(text, ("Aadhaar", "PAN"))</code> returns (kind, start, end) for each number. <code>mask_text</code> sorts them from the end of the text backwards and replaces each span with <code>mask_value</code>: spaces removed, Devanagari digits converted, only the last 4 characters kept.</p>
+<pre><code>Aadhaar 2345 6789 0123  →  XXXX XXXX 0123
+PAN     ABCDE1234F      →  XXXXXX234F</code></pre>
+<p>Going backwards matters: the masked form can have a different length, and replacing from the front would shift every later position. Result: 33 of 33 numbers masked in text.</p>
+
+<h3>In the picture</h3>
+<figure class="small">
+<div class="scroll">
+<svg viewBox="0 0 900 240" role="img" aria-label="Image masking estimate: a block box is split into equal line bands; the band of the line containing the number is chosen; the horizontal span comes from the character positions divided by the line length, plus a 5 percent margin, and that rectangle is painted black.">
+  <g font-family="IBM Plex Sans, sans-serif" font-size="12.5" fill="currentColor">
+    <rect x="20" y="20" width="520" height="180" fill="none" stroke="#2f5bd3" stroke-width="2"/>
+    <line x1="20" y1="80" x2="540" y2="80" stroke="currentColor" stroke-dasharray="4 4" opacity=".5"/>
+    <line x1="20" y1="140" x2="540" y2="140" stroke="currentColor" stroke-dasharray="4 4" opacity=".5"/>
+    <text x="32" y="55">line 0: Name: Ramesh Patil, village Shirur</text>
+    <text x="32" y="115">line 1: PAN: ABCDE1234F</text>
+    <text x="32" y="175">line 2: Date 12/03/2024, Survey No. 45/2, fee ₹ 1,500</text>
+    <rect x="116" y="82" width="122" height="56" fill="currentColor" opacity=".85"/>
+    <text x="560" y="40" font-weight="600">How the black box is placed</text>
+    <text x="560" y="64">1 block height ÷ 3 lines = band height</text>
+    <text x="560" y="86">2 the number is on line 1 → middle band</text>
+    <text x="560" y="108">3 left = start char ÷ line length − 5%</text>
+    <text x="560" y="130">4 right = end char ÷ line length + 5%</text>
+    <text x="560" y="152">5 paint that rectangle black</text>
+    <text x="560" y="184" opacity=".75">Breaks when lines differ in height,</text>
+    <text x="560" y="202" opacity=".75">or the OCR's line breaks differ from print.</text>
+  </g>
+</svg>
+</div>
+<figcaption>Function <code>sensitive_boxes</code>. IndicOCR gives one box per block, not per word, so the number's position is estimated. Example text is illustrative. Result: 17 of 33 numbers fully covered (52%).</figcaption>
+</figure>
+<p><b>Why the picture is harder than the text:</b> the text knows exactly where the number is; the picture only knows the block's rectangle. <b>Fix:</b> find word boxes inside the block with a text detector such as CRAFT and paint the exact word.</p>
+</section>
+
+<!-- ============================================================ -->
+<section id="outputs">
+<h2>9. Verdict, annotated picture and export files</h2>
+<p>For a document named <code>real_001</code>, everything lands in <code>/content/app_output/real_001/</code>:</p>
+<pre class="tree">app_output/real_001/
+├── real_001_input.png        normalised copy used by every step
+├── real_001_annotated.png    coloured boxes + black masks
+├── real_001.json             the full page record (blocks, marks, fields, verification, markdown)
+├── real_001.md               the text in reading order as Markdown
+├── real_001.xlsx             sheets: Fields · Stamps_Signatures · Table_1, Table_2 …
+├── real_001_report.html      one printable page: verdict, fields, picture, text
+└── crops/
+    ├── real_001_signature_0.png
+    └── real_001_stamp_1.png</pre>
+<div class="tablewrap"><table>
+<thead><tr><th>File</th><th>Who it is for</th><th>How it is made</th></tr></thead>
+<tbody>
+<tr><td>JSON</td><td>other software</td><td><code>json.dump(page, ensure_ascii=False)</code> so Devanagari stays readable</td></tr>
+<tr><td>Markdown</td><td>reading the text</td><td><code>page["markdown"]</code>, already masked</td></tr>
+<tr><td>Excel</td><td>clerks who use spreadsheets</td><td>pandas <code>ExcelWriter</code>; tables converted from HTML with <code>pd.read_html</code></td></tr>
+<tr><td>HTML report</td><td>printing and keeping a record</td><td><code>report_html</code>: picture embedded as base64, Noto Sans Devanagari font, one self-contained file</td></tr>
+<tr><td>Annotated PNG</td><td>checking by eye</td><td>Pillow <code>ImageDraw</code></td></tr>
+</tbody></table></div>
+</section>
+
+<!-- ============================================================ -->
+<section id="archive">
+<h2>10. The archive and search</h2>
+<p>Cell A3 opens <code>/content/archive.db</code> with one table:</p>
+<pre><code>CREATE TABLE docs(
+  id INTEGER PRIMARY KEY, name TEXT, added TEXT,
+  signed INT, stamped INT, fields TEXT, text TEXT)</code></pre>
+<p><b>Saving:</b> <code>archive_add</code> inserts the name, the time, signed and stamped as 1/0, the fields as JSON and the masked full text after NFC normalisation.</p>
+<p><b>Searching:</b> <code>archive_search(q)</code> normalises the query to NFC and runs <code>SELECT … WHERE text LIKE ? OR name LIKE ? ORDER BY id DESC</code> with <code>%q%</code>. For each hit it cuts a snippet of about 60 characters on each side of the match and shows ✔ or ✘ for signed and stamped. The <code>?</code> placeholders keep the query safe from SQL injection.</p>
+<div class="simple"><b>Why NFC:</b> the same Marathi word can be stored as different code sequences. Normalising both the stored text and the query makes them identical, so the search finds it.</div>
+<p><b>Limits:</b> the file lives in <code>/content</code> and disappears when Colab restarts (point it to Google Drive or a server to keep it), and <code>LIKE</code> scans every row with no ranking. For a big office: PostgreSQL or SQLite FTS5 full-text search.</p>
+</section>
+
+<!-- ============================================================ -->
+<section id="app">
+<h2>11. The web app</h2>
+<p>Cell A5 builds the interface with <code>gr.Blocks</code>:</p>
+<div class="tablewrap"><table>
+<thead><tr><th>On screen</th><th>Gradio component</th><th>Filled by</th></tr></thead>
+<tbody>
+<tr><td>Scanned page upload</td><td><code>gr.Image(type="filepath")</code></td><td>the user</td></tr>
+<tr><td>"Mask Aadhaar / PAN numbers" (ticked)</td><td><code>gr.Checkbox(value=True)</code></td><td>the user</td></tr>
+<tr><td>Process button</td><td><code>gr.Button</code> → <code>btn.click(process_document, [inp, mask_cb], [...6 outputs])</code></td><td>—</td></tr>
+<tr><td>Verification</td><td><code>gr.Textbox</code></td><td>return value 1: verdict</td></tr>
+<tr><td>Annotated page</td><td><code>gr.Image</code></td><td>return value 2</td></tr>
+<tr><td>Extracted text tab</td><td><code>gr.Markdown</code></td><td>return value 3</td></tr>
+<tr><td>Key fields tab</td><td><code>gr.Dataframe</code></td><td>return value 4</td></tr>
+<tr><td>Stamps &amp; signatures tab</td><td><code>gr.Gallery</code></td><td>return value 5: crop paths</td></tr>
+<tr><td>Downloads tab</td><td><code>gr.File(file_count="multiple")</code></td><td>return value 6: 5 file paths</td></tr>
+<tr><td>Search archive tab</td><td><code>gr.Textbox</code> + button → <code>archive_search</code></td><td>the archive</td></tr>
+</tbody></table></div>
+<p><b>Launching:</b> <code>demo.launch(share=True, server_port=7860)</code> asks Gradio for a public <code>gradio.live</code> link that works on any device. If that fails, the app restarts behind Colab's own proxy address, which works only in the browser of the person running the notebook.</p>
+</section>
+
+<!-- ============================================================ -->
+<section id="data">
+<h2>12. What the data looks like between steps</h2>
+<p>All steps pass around one Python dictionary, the page record. IndicOCR creates it; our code adds to it. Values below are an illustrative example.</p>
+<pre><code>{
+  "image": "real_001_input.png",
+  "markdown": "# … page text in reading order …",
+  "blocks": [                                   ← from IndicOCR (steps 3–4)
+    { "order": 3, "label": "paragraph", "type": "Text",
+      "bbox_xyxy": [118.0, 642.5, 1121.0, 788.0], "conf": 0.94,
+      "text": "<span class="dev">… मराठी मजकूर …</span>" },
+    { "order": 7, "label": "table", "type": "Table",
+      "bbox_xyxy": [96.0, 812.0, 1150.0, 1240.0], "conf": 0.97,
+      "text": "&lt;table&gt;&lt;tr&gt;&lt;td&gt;…&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;" },
+    { "order": 11, "label": "paragraph", "type": "Text", "bbox_xyxy": [...],
+      "text": "…", "inside_mark": "stamp" }      ← tag added by the merge (step 6)
+  ],
+  "marks": [                                    ← added in steps 5–6
+    { "type": "signature", "bbox_xyxy": [702.1, 1702.4, 951.0, 1801.3],
+      "conf": 0.87, "method": "yolo", "crop": ".../crops/real_001_signature_0.png" },
+    { "type": "stamp", "bbox_xyxy": [430.0, 1660.0, 640.0, 1850.0],
+      "conf": null, "method": "colour", "crop": ".../crops/real_001_stamp_1.png" }
+  ],
+  "fields": [ {"field": "PIN code", "value": "400 032"},
+              {"field": "Date", "value": "15.06.2021"} ],     ← step 7 (masked in step 8)
+  "verification": { "signed": true, "stamped": true }           ← step 9
+}</code></pre>
+<p>The class diagram in the report names the same parts: <b>PageRecord</b> holds many <b>Block</b>s, <b>Mark</b>s and <b>Field</b>s; <b>Pipeline</b> (process_document) creates it; <b>Archive</b> stores it; <b>FieldExtractor</b> holds the patterns.</p>
+</section>
+
+<!-- ============================================================ -->
+<section id="evaluation">
+<h2>13. How we tested it</h2>
+<figure class="small">
+<div class="scroll">
+<svg viewBox="0 0 980 170" role="img" aria-label="Evaluation loop: the generator draws pages and records the exact answers; the pipeline processes each page; the scorer compares outputs with the answers and writes the metrics.">
+  <defs><marker id="ah4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+  <g font-family="IBM Plex Sans, sans-serif" font-size="12.5" fill="currentColor">
+    <rect x="10" y="20" width="220" height="120" rx="8" fill="#2f5bd3" fill-opacity=".14" stroke="#2f5bd3"/>
+    <text x="22" y="44" font-weight="600">G1 Generator (seed 2026)</text>
+    <text x="22" y="66">30 A4 pages, 1240 × 1754 px</text>
+    <text x="22" y="86">Mr / Hi / En, half photo-style</text>
+    <text x="22" y="106">signatures, stamps, fields</text>
+    <text x="22" y="126">+ exact answers saved</text>
+    <rect x="260" y="20" width="200" height="120" rx="8" fill="#2f5bd3" fill-opacity=".14" stroke="#2f5bd3"/>
+    <text x="272" y="44" font-weight="600">E3 Run the app</text>
+    <text x="272" y="66">process_document on</text>
+    <text x="272" y="86">every page, same code</text>
+    <text x="272" y="106">as the web app</text>
+    <rect x="490" y="20" width="220" height="120" rx="8" fill="#2f5bd3" fill-opacity=".14" stroke="#2f5bd3"/>
+    <text x="502" y="44" font-weight="600">E3 Compare</text>
+    <text x="502" y="66">boxes: IoU ≥ 0.5 (and 0.3)</text>
+    <text x="502" y="86">text: Levenshtein → CER, WER</text>
+    <text x="502" y="106">fields: exact (type, value)</text>
+    <text x="502" y="126">masks: ≥ 90% covered</text>
+    <rect x="740" y="20" width="230" height="120" rx="8" fill="none" stroke="currentColor"/>
+    <text x="752" y="44" font-weight="600">Metrics</text>
+    <text x="752" y="66">fields 147/147 · masks 33/33</text>
+    <text x="752" y="86">stamps R 0.72 col / 0.00 black</text>
+    <text x="752" y="106">signatures F1 0.44 / 0.67</text>
+    <text x="752" y="126">CER 0.062 · WER 0.056</text>
+    <line x1="230" y1="80" x2="256" y2="80" stroke="currentColor" stroke-width="1.5" marker-end="url(#ah4)"/>
+    <line x1="460" y1="80" x2="486" y2="80" stroke="currentColor" stroke-width="1.5" marker-end="url(#ah4)"/>
+    <line x1="710" y1="80" x2="736" y2="80" stroke="currentColor" stroke-width="1.5" marker-end="url(#ah4)"/>
+    <path d="M120 140 C 120 165, 600 165, 600 144" fill="none" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4 4" marker-end="url(#ah4)"/>
+    <text x="300" y="164" font-size="11">exact answers (ground truth) go straight to the comparison</text>
+  </g>
+</svg>
+</div>
+<figcaption>Notebook <code>akshardrishti_synthetic_eval.ipynb</code>. It repeats the app cells (S1–A4), adds the page generator G1 and the scorer E3. Baselines Tesseract 5.3.4 and PaddleOCR PP-OCRv5 were scored on the same pages.</figcaption>
+</figure>
+<p><b>What the generator draws on each page:</b> an office header, a title, a paragraph, field lines (name, date, random Aadhaar, PAN, phone, PIN, fee, survey number, email), a table on half of the pages, a signature with 85% chance (cursive-font name or scribble, blue or black, rotated ±8°) and a stamp with 85% chance (round or rectangular, blue/violet/red or black, faded, rotated ±25°, often over the signature). Half the pages get a lighting gradient, yellow tint, noise, blur and JPEG compression. Because the generator draws everything, it also writes down the exact answer for each page.</p>
+<p><b>The speed notebook</b> <code>akshardrishti_speed_benchmark.ipynb</code> builds the same pages (P1), wraps the recognizer with settings you can change and a timer (P2), tries one change at a time on 10 pages (P3), then runs the fastest setting that keeps CER within 0.005 of the original on all 30 pages (P4). That is how fp16 and cross-page batching were found.</p>
+</section>
+
+<!-- ============================================================ -->
+<section id="speed">
+<h2>14. Where the time goes</h2>
+<figure class="small">
+<div class="scroll">
+<svg viewBox="0 0 900 190" role="img" aria-label="Time per page on a T4: with bf16 the parser takes 26.69 seconds of 27.73; with fp16 it takes 5.68 seconds of 6.72. Marks take 0.23 seconds and the rest 0.81 seconds in both.">
+  <g font-family="IBM Plex Sans, sans-serif" font-size="12.5" fill="currentColor">
+    <text x="10" y="40">bf16 (released)</text>
+    <rect x="130" y="24" width="664" height="26" fill="#b08d57" fill-opacity=".55"/>
+    <rect x="794" y="24" width="6" height="26" fill="#7c3aed"/>
+    <rect x="800" y="24" width="20" height="26" fill="#2f5bd3"/>
+    <text x="828" y="42" class="num">27.73 s</text>
+    <text x="10" y="92">fp16 (ours)</text>
+    <rect x="130" y="76" width="141" height="26" fill="#b08d57" fill-opacity=".55"/>
+    <rect x="271" y="76" width="6" height="26" fill="#7c3aed"/>
+    <rect x="277" y="76" width="20" height="26" fill="#2f5bd3"/>
+    <text x="305" y="94" class="num">6.72 s</text>
+    <line x1="130" y1="118" x2="820" y2="118" stroke="currentColor" opacity=".3"/>
+    <text x="130" y="134" font-size="11" opacity=".75">0 s</text>
+    <text x="379" y="134" font-size="11" opacity=".75">10 s</text>
+    <text x="628" y="134" font-size="11" opacity=".75">20 s</text>
+    <rect x="130" y="152" width="14" height="14" fill="#b08d57" fill-opacity=".55"/><text x="150" y="164">parser (IndicOCR): 26.69 → 5.68 s</text>
+    <rect x="420" y="152" width="14" height="14" fill="#7c3aed"/><text x="440" y="164">marks: 0.23 s</text>
+    <rect x="560" y="152" width="14" height="14" fill="#2f5bd3"/><text x="580" y="164">fields, masking, files, archive: 0.81 s</text>
+  </g>
+</svg>
+</div>
+<figcaption>Average time per benchmark page on one T4, warm runs. The bar lengths are to scale (24.9 px per second). Our own steps take about 1 s together.</figcaption>
+</figure>
+<ul>
+<li><b>Why bf16 was slow:</b> the T4 has no hardware support for bf16, so it runs through slow paths. fp16 runs on its tensor cores. Same CER and WER.</li>
+<li><b>Why a dense page is slower:</b> the reader writes one token at a time (about 34 tokens per average block). <code>real_001.jpg</code> took about 25 s.</li>
+<li><b>Batching:</b> blocks from 15 pages in the same GPU calls → 1.46 s per page parser time. 30 pages → 2.19 s (more memory and padding).</li>
+<li><b>Memory:</b> peak about 3.2 GB of the T4's 16 GB.</li>
+</ul>
+</section>
+
+<!-- ============================================================ -->
+<section id="failures">
+<h2>15. What can go wrong where</h2>
+<div class="tablewrap"><table>
+<thead><tr><th>Step</th><th>What can go wrong</th><th>What the system does / what to do</th></tr></thead>
+<tbody>
+<tr><td>1 Upload</td><td>No image</td><td>"Upload a page image first."</td></tr>
+<tr><td>2 Normalise</td><td>Huge photo</td><td>Shrunk to 2000 px; prevents running out of memory</td></tr>
+<tr><td>3 Layout</td><td>Designation line labelled footer</td><td>Line skipped (26 of 30 pages); fix: read footers too</td></tr>
+<tr><td>4 Reading</td><td>Dense page</td><td>Slower (about 25 s); use batching for stacks</td></tr>
+<tr><td>4 Reading</td><td>▁ marker in text</td><td>Replaced with a space by <code>clean()</code></td></tr>
+<tr><td>5 Signatures</td><td>Faint, blurred or overlapped signature</td><td>May be missed (recall 0.40 at IoU 0.5); verdict INCOMPLETE → manual check</td></tr>
+<tr><td>5 Stamps</td><td>Black or faded stamp</td><td>Not found; fix: trained stamp model via <code>STAMP_WEIGHTS</code></td></tr>
+<tr><td>6 Merge</td><td>Stamp over blue signature</td><td>Can be dropped by rule a</td></tr>
+<tr><td>7 Fields</td><td>Month-name date, landline</td><td>Not extracted (TC25, TC23); add patterns</td></tr>
+<tr><td>8 Masking</td><td>Short line in a long block</td><td>Black box may miss the number (52% fully covered); review images</td></tr>
+<tr><td>12 Archive</td><td>Colab session ends</td><td>Database lost; store it on Drive or a server</td></tr>
+<tr><td>13 App</td><td>Public link unavailable</td><td>Falls back to the Colab proxy link</td></tr>
+</tbody></table></div>
+</section>
+
+<!-- ============================================================ -->
+<section id="glossary">
+<h2>16. Glossary</h2>
+<div class="tablewrap"><table>
+<tbody>
+<tr><td><b>Block</b></td><td>One region of the page found by the layout model: a paragraph, title, table and so on.</td></tr>
+<tr><td><b>Bounding box</b></td><td>A rectangle [x0, y0, x1, y1] in pixels: top-left and bottom-right corners.</td></tr>
+<tr><td><b>Containment</b></td><td>The fraction of box a that lies inside box b. Used by the merge rules.</td></tr>
+<tr><td><b>IoU</b></td><td>Overlap divided by combined area of two boxes. Used to score detections.</td></tr>
+<tr><td><b>Token</b></td><td>A small piece of text the model writes in one step.</td></tr>
+<tr><td><b>Greedy decoding</b></td><td>Always choosing the most likely next token, so the result is the same every run.</td></tr>
+<tr><td><b>HSV</b></td><td>Colour described as hue (which colour), saturation (how strong) and value (how bright).</td></tr>
+<tr><td><b>Morphological closing</b></td><td>Grow then shrink a mask so nearby strokes join into one shape.</td></tr>
+<tr><td><b>Regex</b></td><td>A pattern for finding text, such as "5 capital letters, 4 digits, 1 capital letter".</td></tr>
+<tr><td><b>NFC</b></td><td>A Unicode normal form that makes equivalent character sequences identical.</td></tr>
+<tr><td><b>fp16 / bf16</b></td><td>Two 16-bit number formats. The T4 runs fp16 fast and bf16 slowly.</td></tr>
+<tr><td><b>CER / WER</b></td><td>Character / word error rate: edits needed to fix the output, divided by the length of the correct text.</td></tr>
+<tr><td><b>Ground truth</b></td><td>The correct answer. Our generator records it while drawing each page.</td></tr>
+</tbody></table></div>
+<p class="where">Sources for this page: <code>indic_ocr_colab.ipynb</code> (cells 1–8, S1–S2, A1–A5), the <code>indic-ocr</code> package and its ARCHITECTURE.md, the two evaluation notebooks, and the project report's results and testing chapters.</p>
+</section>
+</main>
+</div>
+</body>
+</html>

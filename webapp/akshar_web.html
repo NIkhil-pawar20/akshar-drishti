@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Akshar Drishti · Document Verification</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600&family=Tiro+Devanagari+Marathi&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
+<style>
+:root{
+  /* Ink-on-paper office look; colours match the annotated page: violet stamps, red signatures, blue text blocks. */
+  --bg:#f4f5f8; --card:#ffffff; --ink:#18233a; --muted:#5d677a; --line:#dde1e8;
+  --accent:#1f4fd1; --accent-ink:#ffffff; --stamp:#6d28d9; --sig:#c81e1e; --ok:#15803d; --warn:#b45309;
+  --soft:#eef1f7; --okbg:#e7f5ec; --warnbg:#fdf1e3;
+  --sans:"IBM Plex Sans","Noto Sans Devanagari",system-ui,sans-serif;
+  --dev:"Tiro Devanagari Marathi","Noto Sans Devanagari",serif;
+  --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root{--bg:#0f1420;--card:#161d2c;--ink:#e7ebf3;--muted:#a1aabb;--line:#283247;--accent:#7c9cff;--accent-ink:#0f1420;
+  --stamp:#a78bfa;--sig:#f87171;--ok:#4ade80;--warn:#fbbf24;--soft:#1c2436;--okbg:#14301f;--warnbg:#3a2a12;color-scheme:dark}
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15.5px;line-height:1.55}
+button,input{font:inherit;color:inherit}
+a{color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* top bar */
+.bar{background:var(--card);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:10}
+.bar-in{max-width:1280px;margin:0 auto;padding:10px 20px;display:flex;align-items:center;gap:22px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:12px;text-decoration:none;color:var(--ink)}
+.seal{width:40px;height:40px;border-radius:50%;border:2.5px solid var(--stamp);display:grid;place-items:center;color:var(--stamp);font-family:var(--dev);font-size:20px;line-height:1}
+.brand b{display:block;font-size:17px;letter-spacing:.01em}
+.brand small{display:block;color:var(--muted);font-size:12.5px;font-family:var(--dev)}
+nav.tabs{display:flex;gap:4px;margin-left:auto}
+nav.tabs a{padding:8px 14px;border-radius:8px;text-decoration:none;color:var(--muted);font-weight:500}
+nav.tabs a.on{background:var(--soft);color:var(--ink)}
+nav.tabs a:hover{color:var(--ink)}
+.status-dot{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--muted)}
+.status-dot i{width:8px;height:8px;border-radius:50%;background:var(--ok)}
+.status-dot.off i{background:var(--sig)}
+.status-dot.warn i{background:var(--warn)}
+
+main{max-width:1280px;margin:0 auto;padding:22px 20px 60px}
+.view{display:none}
+.view.on{display:block}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px}
+.pad{padding:18px}
+h1,h2,h3{margin:0;text-wrap:balance}
+h2{font-size:18px}
+.muted{color:var(--muted)}
+
+/* process view */
+.grid{display:grid;grid-template-columns:360px minmax(0,1fr);gap:20px;align-items:start}
+.left{position:sticky;top:78px;display:grid;gap:16px}
+.drop{border:2px dashed var(--line);border-radius:12px;padding:18px;text-align:center;cursor:pointer;background:var(--soft);transition:border-color .15s}
+.drop.hover{border-color:var(--accent)}
+.drop img{max-width:100%;max-height:300px;border-radius:6px;display:block;margin:0 auto 10px;box-shadow:0 1px 4px rgba(0,0,0,.15)}
+.drop .big{font-weight:600;margin:6px 0 2px}
+.row{display:flex;align-items:center;gap:10px}
+.switch{display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none}
+.switch input{width:18px;height:18px;accent-color:var(--accent)}
+.btn{background:var(--accent);color:var(--accent-ink);border:0;border-radius:10px;padding:12px 18px;font-weight:600;cursor:pointer;width:100%}
+.btn:disabled{opacity:.55;cursor:progress}
+.btn.ghost{background:transparent;color:var(--accent);border:1px solid var(--line);width:auto;padding:8px 12px;font-weight:500}
+.progress{display:none;gap:8px}
+.progress.on{display:grid}
+.track{height:6px;background:var(--soft);border-radius:4px;overflow:hidden}
+.track i{display:block;height:100%;width:30%;background:var(--accent);border-radius:4px;animation:slide 1.4s ease-in-out infinite}
+@keyframes slide{0%{transform:translateX(-100%)}100%{transform:translateX(340%)}}
+@media (prefers-reduced-motion: reduce){.track i{animation:none;width:100%;opacity:.5}}
+.stage{font-size:13.5px;color:var(--muted)}
+.err{display:none;background:var(--warnbg);color:var(--warn);border-radius:10px;padding:10px 12px;font-size:14px}
+.err.on{display:block}
+
+/* verdict */
+.verdict{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.vbox{border:1px solid var(--line);border-radius:12px;padding:14px;background:var(--card)}
+.vbox .k{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.vbox .v{font-size:22px;font-weight:700;margin-top:4px}
+.vbox.sig .v{color:var(--sig)} .vbox.stp .v{color:var(--stamp)}
+.vbox.no .v{color:var(--muted)}
+.pill{display:inline-block;padding:4px 12px;border-radius:999px;font-weight:700;font-size:14px}
+.pill.ok{background:var(--okbg);color:var(--ok)} .pill.bad{background:var(--warnbg);color:var(--warn)}
+.meta{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:13.5px;color:var(--muted);margin-top:10px}
+.meta b{color:var(--ink);font-variant-numeric:tabular-nums}
+
+.results{display:grid;gap:16px}
+.split{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:16px;align-items:start}
+.pagebox{padding:12px}
+.pagebox img{width:100%;border-radius:6px;display:block;cursor:zoom-in;border:1px solid var(--line)}
+.legend{display:flex;flex-wrap:wrap;gap:10px 14px;font-size:12.5px;color:var(--muted);margin-top:10px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:12px;height:12px;border-radius:2px;border:2px solid}
+.tabbar{display:flex;gap:2px;border-bottom:1px solid var(--line);padding:0 10px;overflow-x:auto}
+.tabbar button{background:none;border:0;border-bottom:2px solid transparent;padding:12px 12px;cursor:pointer;color:var(--muted);font-weight:500;white-space:nowrap}
+.tabbar button.on{color:var(--ink);border-bottom-color:var(--accent)}
+.tabbar .cnt{display:inline-block;min-width:20px;padding:0 6px;margin-left:6px;border-radius:999px;background:var(--soft);font-size:12px;color:var(--muted)}
+.pane{display:none;padding:16px;max-height:720px;overflow:auto}
+.pane.on{display:block}
+.mdtext{font-family:"Noto Sans Devanagari",var(--sans);line-height:1.7}
+.mdtext table{border-collapse:collapse;margin:10px 0;font-size:14px}
+.mdtext td,.mdtext th{border:1px solid var(--line);padding:4px 8px}
+.mdtext h1,.mdtext h2,.mdtext h3{font-size:17px;margin:14px 0 6px}
+table.f{width:100%;border-collapse:collapse;font-size:14.5px}
+table.f th,table.f td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+table.f th{font-size:12px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:600}
+table.f td.v{font-family:var(--mono);font-size:14px}
+.badge{font-size:11.5px;padding:2px 8px;border-radius:999px;background:var(--soft);color:var(--muted);margin-left:6px;font-family:var(--sans)}
+.crops{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px}
+.crop{border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--soft)}
+.crop img{width:100%;height:150px;object-fit:contain;background:#fff;display:block}
+.crop div{padding:8px 10px;font-size:13px}
+.crop b.signature{color:var(--sig)} .crop b.stamp{color:var(--stamp)}
+.dl{display:grid;gap:8px}
+.dl a{display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;text-decoration:none;color:var(--ink)}
+.dl a:hover{border-color:var(--accent)}
+.dl .kind{font-family:var(--mono);font-size:12px;font-weight:500;padding:3px 8px;border-radius:6px;background:var(--soft);min-width:72px;text-align:center}
+.dl .sz{margin-left:auto;color:var(--muted);font-size:13px;font-variant-numeric:tabular-nums}
+.empty{padding:22px}
+.steps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:14px}
+.steps div{background:var(--soft);border-radius:10px;padding:12px;font-size:14px}
+.steps b{display:block;margin-bottom:4px}
+
+/* archive */
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:16px}
+.stat{padding:14px 16px}
+.stat .n{font-size:26px;font-weight:700;font-variant-numeric:tabular-nums}
+.search{display:flex;gap:10px;margin-bottom:14px}
+.search input{flex:1;padding:11px 14px;border:1px solid var(--line);border-radius:10px;background:var(--card)}
+table.a{width:100%;border-collapse:collapse;font-size:14.5px}
+table.a th,table.a td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+table.a th{font-size:12px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+table.a tr.click{cursor:pointer}
+table.a tr.click:hover td{background:var(--soft)}
+.snip{font-family:"Noto Sans Devanagari",var(--sans);color:var(--muted);font-size:13.5px}
+mark{background:#fde68a;color:#111;border-radius:2px;padding:0 1px}
+.yes{color:var(--ok);font-weight:700} .no{color:var(--sig);font-weight:700}
+
+/* about */
+.about{display:grid;gap:16px;max-width:920px}
+.flow{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}
+.flow div{border:1px solid var(--line);border-radius:10px;padding:12px;background:var(--card);font-size:14px}
+.flow b{display:block}
+.flow em{font-style:normal;color:var(--muted);font-size:12.5px}
+
+/* lightbox */
+.lb{position:fixed;inset:0;background:rgba(10,14,22,.86);display:none;align-items:center;justify-content:center;z-index:50;padding:20px}
+.lb.on{display:flex}
+.lb img{max-width:100%;max-height:100%;border-radius:6px}
+.lb button{position:absolute;top:14px;right:18px;background:#fff;color:#111;border:0;border-radius:8px;padding:8px 12px;cursor:pointer;font-weight:600}
+
+@media (max-width:1020px){.grid{grid-template-columns:1fr}.left{position:static}.split{grid-template-columns:1fr}.steps,.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:560px){.verdict{grid-template-columns:1fr}.steps,.stats{grid-template-columns:1fr}nav.tabs{margin-left:0;width:100%}}
+</style>
+</head>
+<body>
+<header class="bar"><div class="bar-in">
+  <a class="brand" href="#process" aria-label="Akshar Drishti home">
+    <span class="seal" aria-hidden="true">अ</span>
+    <span><b>Akshar Drishti</b><small>अक्षर दृष्टी · document verification</small></span>
+  </a>
+  <nav class="tabs" aria-label="Sections">
+    <a href="#process" data-view="process">Process</a>
+    <a href="#archive" data-view="archive">Archive</a>
+    <a href="#about" data-view="about">About</a>
+  </nav>
+  <span class="status-dot" id="health" title="Server status"><i></i><span>Server ready</span></span>
+</div></header>
+
+<main>
+<!-- ================= PROCESS ================= -->
+<section class="view" id="view-process">
+<div class="grid">
+  <div class="left">
+    <div class="card pad" style="display:grid;gap:14px">
+      <h2>Upload a document page</h2>
+      <label class="drop" id="drop" for="file">
+        <img id="preview" alt="Preview of the selected page" hidden>
+        <div class="big" id="dropTitle">Drop a page image here</div>
+        <div class="muted" id="dropSub">or click to choose · PNG or JPG · Marathi, Hindi, English</div>
+      </label>
+      <input type="file" id="file" accept="image/png,image/jpeg,image/webp,image/bmp,image/tiff" hidden>
+      <label class="switch" for="mask"><input type="checkbox" id="mask" checked> Mask Aadhaar and PAN numbers</label>
+      <button class="btn" id="go" disabled>Process document</button>
+      <div class="progress" id="progress" aria-live="polite">
+        <div class="track"><i></i></div>
+        <div class="stage" id="stage">Starting…</div>
+      </div>
+      <div class="err" id="err" role="alert"></div>
+      <p class="muted" style="margin:0;font-size:13px">Runs on the project's GPU server. A normal page takes about 5–10 seconds; a dense page with tables up to about 30 seconds. The first page after the server starts is slower.</p>
+    </div>
+  </div>
+
+  <div class="results" id="results">
+    <div class="card empty" id="emptyState">
+      <h2>What happens to your page</h2>
+      <p class="muted" style="margin:6px 0 0">Upload a scanned government order, notice or certificate. The system reads it, checks it and protects it in one step.</p>
+      <div class="steps">
+        <div><b>1 · Read</b>Finds titles, paragraphs and tables, then reads them in order with IndicOCR.</div>
+        <div><b>2 · Verify</b>Looks for the officer's signature and the office stamp.</div>
+        <div><b>3 · Extract</b>Pulls out dates, survey numbers, amounts, PIN codes and more, including <span lang="mr">०–९</span> digits.</div>
+        <div><b>4 · Protect &amp; store</b>Hides Aadhaar and PAN numbers and saves a searchable record.</div>
+      </div>
+    </div>
+
+    <div id="out" hidden>
+      <div class="card pad">
+        <div class="row" style="justify-content:space-between;flex-wrap:wrap;gap:10px">
+          <div><div class="muted" style="font-size:13px">Verification result</div><h2 id="docName" style="font-size:20px;word-break:break-all">—</h2></div>
+          <span class="pill" id="statusPill">—</span>
+        </div>
+        <div class="verdict" style="margin-top:14px">
+          <div class="vbox sig" id="vSig"><div class="k">Signature</div><div class="v" id="vSigV">—</div></div>
+          <div class="vbox stp" id="vStp"><div class="k">Stamp / seal</div><div class="v" id="vStpV">—</div></div>
+          <div class="vbox"><div class="k">Key fields found</div><div class="v" id="vFld">—</div></div>
+        </div>
+        <div class="meta" id="meta"></div>
+      </div>
+
+      <div class="split" style="margin-top:16px">
+        <div class="card pagebox">
+          <img id="annot" alt="Annotated page: text blocks in blue, tables in green, titles in orange, signatures in red, stamps in violet, masked numbers in black">
+          <div class="legend">
+            <span><i style="border-color:#3b82f6"></i>Text</span>
+            <span><i style="border-color:#16a34a"></i>Table</span>
+            <span><i style="border-color:#f97316"></i>Title</span>
+            <span><i style="border-color:#dc2626"></i>Signature</span>
+            <span><i style="border-color:#7c3aed"></i>Stamp</span>
+            <span><i style="border-color:#000;background:#000"></i>Masked ID</span>
+          </div>
+        </div>
+        <div class="card" style="min-width:0">
+          <div class="tabbar" role="tablist">
+            <button class="on" data-pane="p-fields" role="tab">Key fields<span class="cnt" id="cF">0</span></button>
+            <button data-pane="p-text" role="tab">Extracted text</button>
+            <button data-pane="p-marks" role="tab">Stamps &amp; signatures<span class="cnt" id="cM">0</span></button>
+            <button data-pane="p-dl" role="tab">Downloads<span class="cnt" id="cD">0</span></button>
+          </div>
+          <div class="pane on" id="p-fields"></div>
+          <div class="pane" id="p-text"><div class="mdtext" id="mdtext"></div></div>
+          <div class="pane" id="p-marks"></div>
+          <div class="pane" id="p-dl"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ================= ARCHIVE ================= -->
+<section class="view" id="view-archive">
+  <div class="stats">
+    <div class="card stat"><div class="muted">Documents</div><div class="n" id="sN">–</div></div>
+    <div class="card stat"><div class="muted">Complete (signed + stamped)</div><div class="n" id="sC" style="color:var(--ok)">–</div></div>
+    <div class="card stat"><div class="muted">Need a manual check</div><div class="n" id="sI" style="color:var(--warn)">–</div></div>
+    <div class="card stat"><div class="muted">With a signature</div><div class="n" id="sS" style="color:var(--sig)">–</div></div>
+  </div>
+  <div class="card pad">
+    <div class="search">
+      <input id="q" type="search" placeholder="Search every processed document: a Marathi or Hindi word, a survey number, a date…" aria-label="Search the archive">
+      <button class="btn" id="qgo" style="width:auto">Search</button>
+    </div>
+    <div class="muted" id="qinfo" style="font-size:13px;margin-bottom:8px"></div>
+    <div style="overflow-x:auto"><table class="a" id="atable">
+      <thead><tr><th>#</th><th>Document</th><th>Added</th><th>Signed</th><th>Stamped</th><th>Matching text</th></tr></thead>
+      <tbody></tbody>
+    </table></div>
+  </div>
+</section>
+
+<!-- ================= ABOUT ================= -->
+<section class="view" id="view-about">
+  <div class="about">
+    <div class="card pad">
+      <h2 style="font-size:22px">Akshar Drishti: layout-aware OCR for Indian government documents</h2>
+      <p class="muted" style="margin:8px 0 0">Reads Marathi, Hindi and English pages, verifies the signature and stamp, extracts key values, masks Aadhaar and PAN numbers and keeps a searchable archive.</p>
+    </div>
+    <div class="card pad">
+      <h2>What runs when you click Process</h2>
+      <div class="flow" style="margin-top:12px">
+        <div><b>1 Normalise</b>RGB, longest side ≤ 2000 px<br><em>project code</em></div>
+        <div><b>2 Layout</b>IndicDocLayout: regions and reading order<br><em>pretrained, 33M parameters</em></div>
+        <div><b>3 Read</b>IndicBlockOCR reads each region<br><em>pretrained, 0.8B parameters</em></div>
+        <div><b>4 Signatures</b>YOLOv8s, confidence ≥ 0.4<br><em>pretrained (Tech4Humans)</em></div>
+        <div><b>5 Stamps</b>HSV colour mask, closing, shape filter<br><em>project code</em></div>
+        <div><b>6 Merge</b>containment rules, crops<br><em>project code</em></div>
+        <div><b>7 Key fields</b>8 patterns, Devanagari digits<br><em>project code</em></div>
+        <div><b>8 Masking</b>Aadhaar / PAN in text and image<br><em>project code</em></div>
+        <div><b>9 Verdict</b>signed + stamped = complete<br><em>project code</em></div>
+        <div><b>10 Store</b>files + SQLite archive<br><em>project code</em></div>
+      </div>
+    </div>
+    <div class="card pad">
+      <h2>Measured on the 30-page benchmark</h2>
+      <table class="f" style="margin-top:8px">
+        <tr><td>Key fields extracted</td><td class="v">147 / 147</td></tr>
+        <tr><td>Aadhaar + PAN masked in text</td><td class="v">33 / 33</td></tr>
+        <tr><td>Word error rate (best of 3 OCR systems)</td><td class="v">0.056</td></tr>
+        <tr><td>Coloured stamps found</td><td class="v">13 / 18</td></tr>
+        <tr><td>Signature F1 (IoU 0.5 / 0.3)</td><td class="v">0.44 / 0.67</td></tr>
+        <tr><td>Time per page on a T4 GPU</td><td class="v">6.7 s</td></tr>
+      </table>
+      <p class="muted" style="font-size:13px;margin:10px 0 0">The verdict is a screening aid: confirm it using the stamp and signature crops. Black-ink stamps are not detected by the colour method.</p>
+    </div>
+    <div class="card pad muted" style="font-size:13.5px">OCR engine: IndicOCR by Bodhan AI and AI4Bharat. Signature model: tech4humans/yolov8s-signature-detector. Stamp detection, merging, field extraction, masking, archive and this web application: Akshar Drishti project.</div>
+  </div>
+</section>
+</main>
+
+<div class="lb" id="lb" role="dialog" aria-label="Annotated page, full size"><button id="lbx">Close</button><img id="lbimg" alt="Annotated page, full size"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+let chosen = null, timer = null;
+
+/* ---------- views ---------- */
+function show(view){
+  if(!["process","archive","about"].includes(view)) view = "process";
+  document.querySelectorAll(".view").forEach(v => v.classList.toggle("on", v.id === "view-" + view));
+  document.querySelectorAll("nav.tabs a").forEach(a => a.classList.toggle("on", a.dataset.view === view));
+  if(view === "archive"){ loadStats(); runSearch(); }
+}
+window.addEventListener("hashchange", () => show(location.hash.slice(1)));
+show(location.hash.slice(1));
+
+/* ---------- health ---------- */
+async function health(){
+  const el = $("#health");
+  try{
+    const r = await fetch("/api/health"); const j = await r.json();
+    el.classList.remove("off"); el.classList.toggle("warn", !j.gpu);
+    el.lastElementChild.textContent = !j.gpu ? "Server has no GPU" : (j.gpu_busy ? "Server busy" : "Server ready");
+  }catch(e){ el.classList.add("off"); el.lastElementChild.textContent = "Server offline"; }
+}
+health(); setInterval(health, 15000);
+
+/* ---------- file choose ---------- */
+const drop = $("#drop"), fileIn = $("#file");
+function pick(f){
+  if(!f) return;
+  if(!/^image\//.test(f.type) && !/\.(png|jpe?g|webp|bmp|tiff?)$/i.test(f.name)){ showErr("Please choose a page image (PNG or JPG)."); return; }
+  chosen = f; showErr("");
+  const img = $("#preview"); img.src = URL.createObjectURL(f); img.hidden = false;
+  $("#dropTitle").textContent = f.name;
+  $("#dropSub").textContent = (f.size/1024/1024).toFixed(2) + " MB · click to choose another page";
+  $("#go").disabled = false;
+}
+fileIn.addEventListener("change", e => pick(e.target.files[0]));
+["dragenter","dragover"].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.add("hover"); }));
+["dragleave","drop"].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.remove("hover"); }));
+drop.addEventListener("drop", e => pick(e.dataTransfer.files[0]));
+drop.addEventListener("keydown", e => { if(e.key === "Enter" || e.key === " "){ e.preventDefault(); fileIn.click(); } });
+drop.tabIndex = 0;
+
+function showErr(msg){ const e = $("#err"); e.textContent = msg; e.classList.toggle("on", !!msg); }
+
+/* ---------- process ---------- */
+const STAGES = [
+  [0, "Uploading the page…"],
+  [1, "Finding titles, paragraphs and tables…"],
+  [3, "Reading the text of each region…"],
+  [9, "Still reading: pages with more text take longer…"],
+  [20, "Dense page: almost there…"],
+];
+$("#go").addEventListener("click", async () => {
+  if(!chosen) return;
+  showErr(""); $("#go").disabled = true; $("#progress").classList.add("on");
+  const t0 = performance.now();
+  timer = setInterval(() => {
+    const s = (performance.now() - t0) / 1000;
+    const label = STAGES.filter(x => s >= x[0]).pop()[1];
+    $("#stage").textContent = label + "  " + s.toFixed(0) + " s";
+  }, 250);
+  const fd = new FormData(); fd.append("file", chosen); fd.append("mask", $("#mask").checked ? "true" : "false");
+  try{
+    const r = await fetch("/api/process", {method:"POST", body:fd});
+    const j = await r.json().catch(() => ({}));
+    if(!r.ok) throw new Error(j.detail || ("Server error " + r.status));
+    render(j, (performance.now() - t0) / 1000);
+  }catch(e){
+    showErr(e.message === "Failed to fetch" ? "Could not reach the server. Check that the Colab notebook is still running." : e.message);
+  }finally{
+    clearInterval(timer); $("#progress").classList.remove("on"); $("#go").disabled = false;
+  }
+});
+
+/* ---------- render results ---------- */
+function render(d, wall){
+  $("#emptyState").hidden = true; $("#out").hidden = false;
+  $("#docName").textContent = d.id;
+  const pill = $("#statusPill");
+  pill.textContent = d.complete ? "COMPLETE · signed and stamped" : "INCOMPLETE · check manually";
+  pill.className = "pill " + (d.complete ? "ok" : "bad");
+  $("#vSigV").textContent = d.signed ? "✔ Found (" + d.n_signatures + ")" : "✘ Not found";
+  $("#vSig").classList.toggle("no", !d.signed);
+  $("#vStpV").textContent = d.stamped ? "✔ Found (" + d.n_stamps + ")" : "✘ Not found";
+  $("#vStp").classList.toggle("no", !d.stamped);
+  $("#vFld").textContent = (d.fields || []).length;
+
+  const m = [];
+  m.push("Regions read: <b>" + d.n_blocks + "</b>");
+  const bt = d.block_types || {};
+  if(bt.Table) m.push("Tables: <b>" + bt.Table + "</b>");
+  if(d.n_tagged) m.push("Text on a mark: <b>" + d.n_tagged + "</b>");
+  if(d.timing && d.timing.total != null){
+    m.push("Processing: <b>" + d.timing.total.toFixed(1) + " s</b> (reading " + (d.timing.parser||0).toFixed(1) + " s · marks " + (d.timing.marks||0).toFixed(2) + " s · rest " + (d.timing.rest||0).toFixed(2) + " s)");
+  }
+  if(wall) m.push("Round trip: <b>" + wall.toFixed(1) + " s</b>");
+  if(d.masked === false) m.push("<span style='color:var(--warn)'>Masking was off</span>");
+  $("#meta").innerHTML = m.map(x => "<span>" + x + "</span>").join("");
+
+  const img = $("#annot");
+  if(d.annotated_url){ img.src = d.annotated_url + "?t=" + Date.now(); img.hidden = false; } else img.hidden = true;
+
+  // fields
+  const F = d.fields || [];
+  const hasCtx = F.some(f => f.context);
+  $("#cF").textContent = F.length;
+  $("#p-fields").innerHTML = F.length ? `
+    <div class="row" style="justify-content:flex-end;margin-bottom:8px"><button class="btn ghost" id="copyF">Copy all fields</button></div>
+    <table class="f"><thead><tr><th>Field</th><th>Value</th>${hasCtx ? "<th>Context on the page</th>" : ""}</tr></thead><tbody>
+    ${F.map(f => `<tr><td>${esc(f.field)}</td><td class="v">${esc(f.value)}${/^X{4,}/.test(f.value) ? '<span class="badge">masked</span>' : ''}</td>${hasCtx ? `<td class="snip">${esc(f.context || "")}</td>` : ""}</tr>`).join("")}
+    </tbody></table>` : `<p class="muted">No key fields were found on this page. The system looks for Aadhaar, PAN, phone, PIN code, date, amount, survey/gat number and email.</p>`;
+  const cb = $("#copyF");
+  if(cb) cb.addEventListener("click", async () => {
+    try{ await navigator.clipboard.writeText(F.map(f => f.field + "\t" + f.value + (hasCtx ? "\t" + (f.context || "") : "")).join("\n")); cb.textContent = "Copied"; }
+    catch(e){ cb.textContent = "Copy not allowed"; }
+    setTimeout(() => cb.textContent = "Copy all fields", 1600);
+  });
+
+  // text
+  const md = d.markdown || "";
+  let htmlText;
+  if(window.marked && window.DOMPurify){ htmlText = DOMPurify.sanitize(marked.parse(md)); }
+  else htmlText = "<pre style='white-space:pre-wrap'>" + esc(md) + "</pre>";
+  $("#mdtext").innerHTML = md.trim() ? htmlText : "<p class='muted'>No text was read from this page.</p>";
+
+  // marks
+  const M = d.marks || [];
+  $("#cM").textContent = M.length;
+  $("#p-marks").innerHTML = M.length ? `<div class="crops">${M.map(x => `
+      <div class="crop">${x.crop_url ? `<img src="${esc(x.crop_url)}" alt="${esc(x.type)} crop">` : ""}
+      <div><b class="${esc(x.type)}">${x.type === "signature" ? "Signature" : "Stamp"}</b><br>
+      <span class="muted">${x.method === "yolo" ? "YOLOv8 · confidence " + (x.conf != null ? Number(x.conf).toFixed(2) : "–") : "colour detector"}</span></div></div>`).join("")}</div>
+      <p class="muted" style="font-size:13px;margin:12px 0 0">Confirm each mark by eye. The verdict is a screening aid.</p>`
+    : `<p class="muted">No signature or stamp was detected. Black-ink stamps are not detected by the colour method, so check the page by eye.</p>`;
+
+  // downloads
+  const D = d.downloads || [];
+  $("#cD").textContent = D.length;
+  $("#p-dl").innerHTML = `<div class="dl">${D.map(x => `<a href="${esc(x.url)}" download="${esc(x.name)}"><span class="kind">${esc(x.kind)}</span><span>${esc(x.label)}<br><span class="muted" style="font-size:12.5px">${esc(x.name)}</span></span><span class="sz">${x.size_kb} KB</span></a>`).join("")}</div>`;
+
+  window.scrollTo({top:0, behavior:"smooth"});
+}
+
+/* tabs inside results */
+document.querySelectorAll(".tabbar button").forEach(b => b.addEventListener("click", () => {
+  document.querySelectorAll(".tabbar button").forEach(x => x.classList.toggle("on", x === b));
+  document.querySelectorAll(".pane").forEach(p => p.classList.toggle("on", p.id === b.dataset.pane));
+}));
+
+/* lightbox */
+$("#annot").addEventListener("click", () => { $("#lbimg").src = $("#annot").src; $("#lb").classList.add("on"); });
+$("#lbx").addEventListener("click", () => $("#lb").classList.remove("on"));
+$("#lb").addEventListener("click", e => { if(e.target.id === "lb") $("#lb").classList.remove("on"); });
+document.addEventListener("keydown", e => { if(e.key === "Escape") $("#lb").classList.remove("on"); });
+
+/* ---------- archive ---------- */
+async function loadStats(){
+  try{
+    const s = await (await fetch("/api/stats")).json();
+    $("#sN").textContent = s.documents; $("#sC").textContent = s.complete; $("#sI").textContent = s.incomplete; $("#sS").textContent = s.signed;
+  }catch(e){}
+}
+function hl(text, q){
+  const t = esc(text); if(!q) return t;
+  const i = t.toLowerCase().indexOf(esc(q).toLowerCase());
+  return i < 0 ? t : t.slice(0,i) + "<mark>" + t.slice(i, i + esc(q).length) + "</mark>" + t.slice(i + esc(q).length);
+}
+async function runSearch(){
+  const q = $("#q").value.trim();
+  const body = $("#atable tbody");
+  try{
+    const j = await (await fetch("/api/search?q=" + encodeURIComponent(q))).json();
+    $("#qinfo").textContent = q ? `${j.count} document(s) contain “${q}”` : `${j.count} document(s) in the archive, newest first. Click a row to open its results.`;
+    body.innerHTML = j.rows.length ? j.rows.map(r => `
+      <tr class="${r.has_results ? "click" : ""}" data-id="${esc(r.name)}" ${r.has_results ? 'tabindex="0"' : ""}>
+        <td class="muted">${r.id}</td><td>${esc(r.name)}</td><td class="muted" style="white-space:nowrap">${esc(r.added)}</td>
+        <td class="${r.signed ? "yes" : "no"}">${r.signed ? "✔" : "✘"}</td><td class="${r.stamped ? "yes" : "no"}">${r.stamped ? "✔" : "✘"}</td>
+        <td class="snip">${hl(r.snippet, q)}</td></tr>`).join("")
+      : `<tr><td colspan="6" class="muted">No matching documents.</td></tr>`;
+    body.querySelectorAll("tr.click").forEach(tr => {
+      const open = () => openDoc(tr.dataset.id);
+      tr.addEventListener("click", open);
+      tr.addEventListener("keydown", e => { if(e.key === "Enter") open(); });
+    });
+  }catch(e){ $("#qinfo").textContent = "Could not reach the archive."; }
+}
+async function openDoc(id){
+  try{
+    const r = await fetch("/api/doc/" + encodeURIComponent(id)); const j = await r.json();
+    if(!r.ok) throw new Error(j.detail || "Not found");
+    location.hash = "process"; render(j, null);
+  }catch(e){ alertBox(e.message); }
+}
+function alertBox(msg){ location.hash = "process"; showErr(msg); }
+$("#qgo").addEventListener("click", runSearch);
+$("#q").addEventListener("keydown", e => { if(e.key === "Enter") runSearch(); });
+</script>
+</body>
+</html>
